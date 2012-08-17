@@ -27,7 +27,7 @@ def isEclipseWorkspace(path, dirs):
      folder inside of the .metadata folder
      '''
 
-     if '.metadata' in dirs:
+     if '.metadata' in dirs and '.project' not in listdir(path):
           version_file = os.path.join(path, '.metadata', 'version.ini')
           
           if os.path.exists(version_file):
@@ -56,27 +56,39 @@ def getAssignmentDirectory(top_dir, path):
 
      return os.path.join(top_dir, diff)
      
-def moveAssignmentUp(assignment_name, dest, path, dirs):
+def moveAssignmentUp(assignment_name, dest, workspace, dirs):
      '''
      Move the contents of the folder specified by assignment name (or the first non-hidden one if given None)
      to the given destination folder, deleting everything else in the folder specified by path
-     (including the path itself)
+     (including the path itself if it isn't the destination)
      '''
 
      if assignment_name:
           if assignment_name not in dirs:
                print "Couldn't find assignment " + assignment_name + " in this Eclipse workspace!"
                return
-          dirToMove = os.path.join(path, assignment_name)
+          dirToMove = os.path.join(workspace, assignment_name)
      else:
           # Get first project folder
-          dirToMove = os.path.join(path, [d for d in dirs if d != '.metadata'][0])
+          dirToMove = os.path.join(workspace, [d for d in dirs if d != '.metadata'][0])
 
-     for c in os.listdir(dirToMove):
+     contents = os.listdir(dirToMove)
+     for c in contents:
           move(os.path.join(dirToMove,c), os.path.join(dest, c))
 
-     rmtree(path)
-     
+     # Delete all the other contents, being careful not to kill anything we just moved
+     # or the destination directory itself!
+     if not os.path.samefile(os.path.abspath(workspace), os.path.abspath(dest)):
+          rmtree(workspace)
+     else:
+          for f in os.listdir(dest):
+               if f not in contents:
+                    deadFile = os.path.join(dest,f)
+                    if os.path.isdir(deadFile):
+                         rmtree(deadFile)
+                    else:
+                         os.remove(deadFile)
+
 if __name__ == '__main__':
 
      if len(argv) > 1:
@@ -96,5 +108,6 @@ if __name__ == '__main__':
      for (path, dirs, files) in walk(top_dir):
           if isEclipseWorkspace(path, dirs):
                assignmentDirectory = getAssignmentDirectory(top_dir, path)
+               print "Moving project in workspace %s to %s" % (path, assignmentDirectory)
                moveAssignmentUp(assignment_name, assignmentDirectory, path, dirs)
                dirs = [] #stop recursing

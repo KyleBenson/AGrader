@@ -14,12 +14,19 @@ from os import listdir
 from os.path import join, split
 from smtplib import SMTP
 from email.MIMEText import MIMEText
+import shutil
 
 if len(argv) < 4:
     print usage
     exit(0)
 
 top_dir = argv[1]
+if len(argv) > 3:
+    fromAddress = argv[3]
+else:
+    fromAddress = 'kebenson@ics.uci.edu'
+
+smtp = SMTP('smtp.ics.uci.edu')
 
 for filename in [join(top_dir,i) for i in listdir(top_dir) if i.endswith('.email')]:
     recipient = split(filename)[1].replace('.email','') + '@uci.edu'
@@ -28,15 +35,15 @@ for filename in [join(top_dir,i) for i in listdir(top_dir) if i.endswith('.email
     msg = f.read()
     f.close()
     
+    shutil.move(filename, filename + '.sent')
+
     msg = MIMEText(msg)
     msg['Subject'] = argv[2]
-    msg['From'] = argv[3]
+    msg['From'] = fromAddress
     msg['To'] = recipient
-    msg['Bcc'] = argv[3]
-    msg['Reply-to'] = argv[3]
+    msg['Bcc'] = fromAddress
+    msg['Reply-to'] = fromAddress
     
-    #print msg
+    smtp.sendmail(fromAddress, [recipient], msg.as_string())
 
-    s = SMTP('smtp.ics.uci.edu')
-    s.sendmail('kebenson@ics.uci.edu', [recipient], msg.as_string())
-    s.quit()
+smtp.quit()
