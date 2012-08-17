@@ -63,14 +63,16 @@ def moveAssignmentUp(assignment_name, dest, workspace, dirs):
      (including the path itself if it isn't the destination)
      '''
 
-     if assignment_name:
-          if assignment_name not in dirs:
-               print "Couldn't find assignment " + assignment_name + " in this Eclipse workspace!"
-               return
-          dirToMove = os.path.join(workspace, assignment_name)
+     if assignment_name and assignment_name not in dirs:
+          print "Couldn't find assignment " + assignment_name + " in this Eclipse workspace!"
+          return
      else:
           # Get first project folder
-          dirToMove = os.path.join(workspace, [d for d in dirs if d != '.metadata'][0])
+          assignment_name = [d for d in dirs if d != '.metadata'][0]
+     
+     dirToMove = os.path.join(workspace, assignment_name)
+
+     print "Moving project %s in workspace %s to %s" % (assignment_name, path, assignmentDirectory)
 
      contents = os.listdir(dirToMove)
      for c in contents:
@@ -108,6 +110,5 @@ if __name__ == '__main__':
      for (path, dirs, files) in walk(top_dir):
           if isEclipseWorkspace(path, dirs):
                assignmentDirectory = getAssignmentDirectory(top_dir, path)
-               print "Moving project in workspace %s to %s" % (path, assignmentDirectory)
                moveAssignmentUp(assignment_name, assignmentDirectory, path, dirs)
                dirs = [] #stop recursing

@@ -154,7 +154,7 @@ for folder in listdir(top_dir):
     #print full_name, row_index, stud_id, ucid
 
     #check if this attempt has already been graded
-    if exists(email_name) and current_attempt_number <= int(last_attempt_num):        
+    if exists(email_name) or exists(email_name + '.sent') and current_attempt_number <= int(last_attempt_num):
         continue
     email = [full_name + ',', CRLF + 'This is your grade report for Lab Exam #' + str(lab_number) + CRLF]
 
@@ -165,7 +165,7 @@ for folder in listdir(top_dir):
 
     #give option for viewing source code
     if raw_input("View source files? y/n? ") == 'y':
-        system('less ' + join('src','*'))
+        system('find src \( -iname "*.java" \'!\' -name Smiley.java \) -exec less \'{}\' +')
 
     #prompt for grade
     grade = None

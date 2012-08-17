@@ -16,7 +16,7 @@ from smtplib import SMTP
 from email.MIMEText import MIMEText
 import shutil
 
-if len(argv) < 4:
+if len(argv) < 3:
     print usage
     exit(0)
 
