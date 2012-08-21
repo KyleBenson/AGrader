@@ -16,7 +16,6 @@ a message to be included in the grade email.
 An optional 3rd argument provides a file from which the remainder of the email comes.  Use for announcements, general observations, refined directions, etc.
 '''
 
-main_class = 'Smiley'
 show_profile = False
 USERNAME = 'kebenson@uci.edu'
 SPREADSHEET_NAME = 'ICS21-Summer2012-grades-labexams'
@@ -47,6 +46,8 @@ if len(argv) > 3:
         email_appendix = f.read()
 else:
     email_appendix = None
+
+main_class = 'MusicArchive' if 'LabExam4' in argv[1] else 'Smiley'
 
 #gather grading reasons
 grading_reasons = {}
@@ -165,15 +166,44 @@ for folder in listdir(top_dir):
 
     #give option for viewing source code
     if raw_input("View source files? y/n? ") == 'y':
-        system('find src \( -iname "*.java" \'!\' -name Smiley.java \) -exec less \'{}\' +')
+        system('find src \( -iname "*.java" \'!\' -name Smiley.java \'!\' -name MusicArchive.java \) -exec less \'{}\' +')
+        if 'LabExam4' in argv[1]:
+            if not exists('index.txt'):
+                print 'No index.txt file!'
+                
+            else:
+                with open('index.txt') as musicIndex:
+                    musicLines = musicIndex.readlines()
+                    if len(musicLines) < 2:
+                        print "index.txt file EMPTY!"
+                        pass
+                    else:
+                        for i in range(1, len(musicLines)):
+                            if musicLines[i] == musicLines[i-1]:
+                                print 'DUPLICATE item!'
+                                system('less index.txt')
+                                break
+                            elif musicLines[i] < musicLines[i-1]:
+                                print 'NOT alphabetized!'
+                                system('less index.txt')
+                                break
+                        else:
+                            print 'index.txt aplhabetized!'
 
     #prompt for grade
     grade = None
     while grade is None:
         grade = raw_input("Did " + ucid + " pass? y or n, p or f\n")
+        if '+' in grade:
+            # remove the +
+            grade = grade.translate(None, '+')
+            personal_message = raw_input("Type your personal message then hit enter:\n") + '\n'
+
         if grade is not None and grade not in 'ynpf':
             print "You must type one letter of y, n, p, or f"
             grade = None
+
+            
 
     if grade in 'yp':
         passed = True
@@ -196,9 +226,9 @@ for folder in listdir(top_dir):
 
         elif reason not in grading_reasons.keys() or reason == 'h':
             if reason == 'h':
-                print 'The possible grading reasons are chosen from the single letters: ' + str(sorted(grading_reasons.keys())) + '\nThey were pulled from the files: ' + str(sorted(grading_reasons_files))
+                print 'The possible grading reasons are chosen from the single letters: ' + str(grading_reasons.keys()) + '\nThey were pulled from the files: ' + str(grading_reasons_files)
             else:
-                print "You must type one letter of " + (grading_reasons.keys())
+                print "You must type one letter of " + str(grading_reasons.keys())
             reason = None
 
     #write whether they passed or not
