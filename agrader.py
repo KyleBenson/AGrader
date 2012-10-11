@@ -2,7 +2,7 @@
 
 usage=\
 '''
-Summary: ./grade-labs.py projects_directory grading_reasons_directory email_appendix_file
+Summary: ./grade-labs.py projects_directory grading_comments_directory email_appendix_file
 
 runs through all of the directories representing Eclipse projects in the directory specified ('.' by default) and (attempts to) run the project.
 
@@ -17,6 +17,7 @@ An optional 3rd argument provides a file from which the remainder of the email c
 '''
 
 show_profile = False
+output_connector = None
 USERNAME = 'kebenson@uci.edu'
 SPREADSHEET_NAME = 'ICS21-Summer2012-grades-labexams'
 
@@ -27,7 +28,7 @@ from getpass import getpass
 
 CRLF = '\r\n'
 
-if len(argv) <= 1 or argv[1] in ['help', '--help', '-h', '-H']:
+if len(argv) <= 1 or argv[1] in ['help', '--help', '-help', '-h', '-H']:
     print usage
     exit(0)
 
@@ -37,9 +38,9 @@ else:
     top_dir = '.'
 
 if len(argv) > 2:
-    reasons_dir = argv[2]
+    comments_dir = argv[2]
 else:
-    reasons_dir = 'grading-reasons'
+    comments_dir = None
 
 if len(argv) > 3:
     with open(argv[3]) as f:
@@ -47,45 +48,47 @@ if len(argv) > 3:
 else:
     email_appendix = None
 
-main_class = 'MusicArchive' if 'LabExam4' in argv[1] else 'Smiley'
+#main_class = 'MusicArchive' if 'LabExam4' in argv[1] else 'Smiley'
 
-#gather grading reasons
-grading_reasons = {}
-grading_reasons_files = []
-root = split(reasons_dir)[0]
-for reason in listdir(reasons_dir):
-    grading_reasons_files.append(reason)
+#gather comments if requested
+if comments_dir:
+    comments = {}
+    comments_files = []
+    root = split(comments_dir)[0]
+    for reason in listdir(comments_dir):
+        comments_files.append(reason)
 
-    with open(join(root,reason)) as f:
-        key = f.readline().strip()
-        message = f.read()
-        grading_reasons[key] = message
+        with open(join(root,reason)) as f:
+            key = f.readline().strip()
+            message = f.read()
+            comments[key] = messag
 
-#load gradebook spreadsheet
-PASSWD = getpass('Enter password for ' + USERNAME + ': ')
-import gdata.spreadsheet.service
-gd_client = gdata.spreadsheet.service.SpreadsheetsService()
-gd_client.email = USERNAME
-gd_client.password = PASSWD
-gd_client.ProgrammaticLogin()
+#load gradebook spreadsheet if requested
+if output_connector:
+    PASSWD = getpass('Enter password for ' + USERNAME + ': ')
+    import gdata.spreadsheet.service
+    gd_client = gdata.spreadsheet.service.SpreadsheetsService()
+    gd_client.email = USERNAME
+    gd_client.password = PASSWD
+    gd_client.ProgrammaticLogin()
 
-docs = gd_client.GetSpreadsheetsFeed()
-spreads = []
+    docs = gd_client.GetSpreadsheetsFeed()
+    spreads = []
 
-#Get correct spreadsheet
-for i in docs.entry: spreads.append(i.title.text)
-spread_number = None
-for i,j in enumerate(spreads):
-    if j == SPREADSHEET_NAME: spread_number = i
-if spread_number == None:
-    print "Error downloading gradebook from Google Spreadsheet. spread_number is None"
-    exit
+    #Get correct spreadsheet
+    for i in docs.entry: spreads.append(i.title.text)
+    spread_number = None
+    for i,j in enumerate(spreads):
+        if j == SPREADSHEET_NAME: spread_number = i
+    if spread_number == None:
+        print "Error downloading gradebook from Google Spreadsheet. spread_number is None"
+        exit
 
-#Get correct worksheet feed
-key = docs.entry[spread_number].id.text.rsplit('/', 1)[1]
-feed = gd_client.GetWorksheetsFeed(key)
-wksht_id = feed.entry[0].id.text.rsplit('/', 1)[1]
-feed = gd_client.GetListFeed(key,wksht_id)
+    #Get correct worksheet feed
+    key = docs.entry[spread_number].id.text.rsplit('/', 1)[1]
+    feed = gd_client.GetWorksheetsFeed(key)
+    wksht_id = feed.entry[0].id.text.rsplit('/', 1)[1]
+    feed = gd_client.GetListFeed(key,wksht_id)
 
 pwd = getcwd()
 
@@ -161,6 +164,8 @@ for folder in listdir(top_dir):
 
     chdir(folder)
 
+    #TODO: figure out the main_class!!!
+
     system('javac -cp ./lib:./src -d bin src/*')
     system('java -cp ./lib:./src:./bin ' + main_class)
 
@@ -214,7 +219,7 @@ for folder in listdir(top_dir):
     reason = None
     personal_message = None
     while not passed and reason is None:
-        reason = raw_input("Why not?\nOptions are: " + str(grading_reasons.keys()) + "\nAdd a + to include a personalized message on a separate line. You can also specify only + for just a personalized reason.\nOr press 'h' for help.\n")
+        reason = raw_input("Why not?\nOptions are: " + str(comments.keys()) + "\nAdd a + to include a personalized message on a separate line. You can also specify only + for just a personalized reason.\nOr press 'h' for help.\n")
         if '+' in reason:
             # remove the +
             reason = reason.translate(None, '+')
@@ -222,13 +227,13 @@ for folder in listdir(top_dir):
 
         # Allow blank reason if a personal message is specified
         if reason == '' and personal_message:
-            reason = None
+            reason = 'skip'
 
-        elif reason not in grading_reasons.keys() or reason == 'h':
+        elif reason not in comments.keys()+['skip'] or reason == 'h':
             if reason == 'h':
-                print 'The possible grading reasons are chosen from the single letters: ' + str(grading_reasons.keys()) + '\nThey were pulled from the files: ' + str(grading_reasons_files)
+                print 'The possible grading reasons are chosen from the single letters: ' + str(comments.keys()) + '\nThey were pulled from the files: ' + str(comments_files)
             else:
-                print "You must type one letter of " + str(grading_reasons.keys())
+                print "You must type one letter of " + str(comments.keys())
             reason = None
 
     #write whether they passed or not
@@ -237,8 +242,8 @@ for folder in listdir(top_dir):
         gradebook_row['labexam' + lab_number] = 'P'
     else:
         email.append('You did not pass this lab exam for the following reason:')
-        if reason:
-            email.append(grading_reasons[reason])
+        if reason != 'skip':
+            email.append(comments[reason])
         if personal_message:
             email.append(personal_message)
         email.append('I will be holding a retake session soon in which you can attempt this lab exam again.')
