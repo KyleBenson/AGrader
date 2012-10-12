@@ -30,7 +30,12 @@ def ICS23Agrader(args):
 
         for cmd_inputs in [join(args.dir, cmd_input) for cmd_input in config.cmd_inputs[dirname]]:
             print 'Running %s with inputs:\n%s' % (main_class, cmd_inputs)
-            system('java -cp %s %s << %s' % (dirpath + classpath_sep + config.classpath, main_class, cmd_inputs))
+            temp_inputs_file = join(args.dir, 'inputs.tmp')
+
+            with open(temp_inputs_file, 'w') as f:
+                f.write(cmd_inputs)
+
+            system('java -cp %s %s < %s' % (dirpath + classpath_sep + config.classpath, main_class, temp_inputs_file))
 
         #give option for viewing source code
         if raw_input("View source files? y/n? ") == 'y':
