@@ -53,8 +53,12 @@ def ParseArgs():
                         help='''Directory in which to find text files containing canned comments''')
     parser.add_argument('--email-appendix', '-ea', nargs='?',
                         help='''File containing an appendix to include on all generated emails to students''')
-    parser.add_argument('--no_script_inputs', '-s', action='store_true', 
+    parser.add_argument('--no_script_inputs', action='store_true', 
                         help='''Directory in which to find text files containing canned comments''')
+    parser.add_argument('--submissions', nargs='+',
+                        help='''Only grade submissions in the folders specified''')
+    parser.add_argument('--regrade', action='store_true',
+                        help='''Force regrading of submissions''')
 
     return parser.parse_args()
 

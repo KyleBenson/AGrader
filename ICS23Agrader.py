@@ -17,6 +17,9 @@ def ICS23Agrader(args):
     config = ReadConfig(args.dir)
 
     for username in sorted(listdir(join(args.dir, 'submissions'))):
+        if args.submissions and username not in args.submissions:
+            continue
+
         print '\n\n############################################################'
         print '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n'
         print 'File upload times:' 
@@ -30,7 +33,7 @@ def ICS23Agrader(args):
             dirpath = join(args.dir, 'submissions', username, program)
             filenames = listdir(dirpath)
 
-            if not [f.endswith('.java') for f in filenames] or dirpath.endswith('removed') or '.graded' in filenames:
+            if not [f.endswith('.java') for f in filenames] or dirpath.endswith('removed') or (not args.regrade and '.graded' in filenames):
                 continue
 
             main_class = config.main_classes[program]
