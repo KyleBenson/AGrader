@@ -19,10 +19,9 @@ a message to be included in the grade email.
 An optional 3rd argument provides a file from which the remainder of the email comes.  Use for announcements, general observations, refined directions, etc.
 '''
 
-show_profile = False
-output_connector = None
+#show_profile = False
+#output_connector = None
 USERNAME = 'kebenson@uci.edu'
-SPREADSHEET_NAME = 'ICS21-Summer2012-grades-labexams'
 
 from os import listdir, system, getcwd, chdir, getcwd
 from os.path import isdir, join, split, exists
@@ -32,6 +31,10 @@ from getpass import getpass
 import argparse
 
 CRLF = '\r\n'
+
+#TODO:
+def ReadConfig():
+    pass
 
 def ParseArgs():
 ##################################################################################
@@ -47,18 +50,33 @@ def ParseArgs():
                                      #epilog='Text to display at the end of the help print',
                                      )
 
+    # Specify files/resources
     parser.add_argument('dir',
                         help='''Directory in which to find the assignment files and submissions''')
     parser.add_argument('--comments', '-c', nargs='?',
                         help='''Directory in which to find text files containing canned comments''')
-    parser.add_argument('--email-appendix', '-ea', nargs='?',
+    parser.add_argument('--email_appendix', '-ea', nargs='?',
                         help='''File containing an appendix to include on all generated emails to students''')
-    parser.add_argument('--no_script_inputs', action='store_true', 
-                        help='''Directory in which to find text files containing canned comments''')
+    parser.add_argument('--script_inputs', action='store',
+                        help='''Use the script inputs in the specified directory (their names should match the problems/assignment)''')
+    parser.add_argument('--config_file', action='store', default='assignment_config',
+                        help='''Python file that configures the assignment (default = %(default))''')
+
+    # Control grading flow
     parser.add_argument('--submissions', nargs='+',
-                        help='''Only grade submissions in the folders specified''')
+                        help='''Only grade the specified submissions''')
+    parser.add_argument('--problems', nargs='+',
+                        help='''Only grade the specified problems''')
     parser.add_argument('--regrade', action='store_true',
                         help='''Force regrading of submissions''')
+
+    # User preferences
+    parser.add_argument('--username', action='store', default=USERNAME,
+                        help='''Username for logging into Gradebook, retrieving submissions, etc.''')
+    parser.add_argument('--passwd', action='store', 
+                        help='''Password for logging into Gradebook, retrieving submissions, etc.''')
+    parser.add_argument('--verbose', action='store_true', 
+                        help='''Verbosely print logging / debugging information during execution''')
 
     return parser.parse_args()
 
@@ -66,7 +84,10 @@ if __name__ == '__main__':
 
     args = ParseArgs()
 
+    sys.path.append(args.dir)
+    config = __import__(args.config_file)
+
     from ICS23Agrader import *
-    ICS23Agrader(args)
+    ICS23Agrader(config.Config(project_dir, args), args)
 
 
