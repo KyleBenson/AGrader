@@ -59,7 +59,7 @@ def ParseArgs():
                         help='''File containing an appendix to include on all generated emails to students''')
     parser.add_argument('--script_inputs', action='store',
                         help='''Use the script inputs in the specified directory (their names should match the problems/assignment)''')
-    parser.add_argument('--config_file', action='store', default='assignment_config',
+    parser.add_argument('--assignment_file', action='store', default='assignment_config',
                         help='''Python file that configures the assignment (default = %(default))''')
 
     # Control grading flow
@@ -85,9 +85,9 @@ if __name__ == '__main__':
     args = ParseArgs()
 
     sys.path.append(args.dir)
-    config = __import__(args.config_file)
+    assignment = __import__(args.assignment_file).GetAssignment(args)
 
-    from ICS23Agrader import *
-    ICS23Agrader(config.Config(project_dir, args), args)
+    assignment.Run()
+
 
 

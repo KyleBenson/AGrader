@@ -2,10 +2,12 @@
 # @author: Kyle Benson
 # (c) Kyle Benson 2012
 
-from BaseUI import BaseUI
+from BasePromptUI import BasePromptUI
 from getpass import getpass
 
-class CLUI(BaseUI):
+CRLF = '\r\n'
+
+class CLUI(BasePromptUI):
     
     def __init__(self, args):
         try:
@@ -14,48 +16,48 @@ class CLUI(BaseUI):
             self.verbose = False
     
 ####### PROMPTS ########
-    def PromptStr(self, msg=None):
-        if not msg:
-            msg = 'Please enter a string: '
+    def promptStr(self, msg=None):
+        value = raw_input(msg if msg else 'Please enter a string: ')
+        return value
 
-        return raw_input(msg)
-
-    def __PromptType(self, value_type, msg, err_msg='Please enter a valid value.'):
+    def promptType(self, value_type, msg=None, err_msg='Please enter a valid value.'):
+        '''Repeatedly prompt the user for input, trying to make the input into a an object of value_type'''
         result = None
         while result is None:
             try:
-                result = value_type(self.PromptStr(msg))
+                result = value_type(raw_input(msg))
             except ValueError:
                 print err_msg
                 result = None
 
         return result
 
-    def PromptBool(self, msg=None):
-        err_msg = 'Please enter yes, no, y, n, or press enter to choose yes'
-        if not msg:
-            msg = err_msg + ': '
-        
-        def __BoolCheck(value):
-            if value not in ('y', 'n', 'yes', 'no', ''):
+    def promptInt(self, msg=None):
+        return self.promptType(int, 'Please enter an integer:', 'Not a valid integer.')
+    
+    def promptFloat(self, msg=None):
+        return self.promptType(float, msg if msg else 'Please enter a float: ', 'Please enter a valid number.')
+
+    def promptOptions(self, options, msg=None, err_msg=None):
+        if msg is None:
+            msg = 'Please enter one of: %s%s' % (', '.join(options), CRLF)
+
+        def __optionsCheck(value):
+            try:
+                if value not in options:
+                    raise ValueError
+                else:
+                    return value
+            except TypeError:
                 raise ValueError
-            else:
-                return not value.startswith('n')
 
-        return self.__PromptType(__BoolCheck, msg, msg)
-    
-    def PromptInt(self, msg=None):
-        return self.__PromptType(int, msg if msg else 'Please enter an integer: ', 'Please enter a valid integer.')
-    
-    def PromptFloat(self, msg=None):
-        return self.__PromptType(float, msg if msg else 'Please enter a float: ', 'Please enter a valid number.')
+        return self.promptType(__optionsCheck, msg, 'Entry not found.' if err_msg is None else err_msg)
 
-    def PromptIndex(self, options, msg=None):
-        if not msg:
-            msg = 'Please enter the integer index of which of the following options you want:'
-
-        msg += '\n%s: '.join([''] + options) % tuple(range(1, len(options) + 1))
-        msg += '\nEnter choice: '
+    def promptIndex(self, options, msg=None, sep=(CRLF + '  %s: ')):
+        if msg is None:
+            msg = ''.join(['Please enter the integer index of which of the following options you want:', CRLF, 
+                           sep.join([''] + options) % tuple(range(1, len(options) + 1)),
+                           CRLF, 'Enter choice: '])
 
         def __IdxCheck(value, length=len(options)):
             idx = int(value)
@@ -64,65 +66,45 @@ class CLUI(BaseUI):
             else:
                 return idx
 
-        return self.__PromptType(__IdxCheck, msg, 'Please enter a valid index.')
+        return self.promptType(__IdxCheck, msg, 'Please enter a valid index.')
     
-    def PromptPassword(self, msg=None):
+    def promptBool(self, msg=None, assume_yes=True):
+        if not msg:
+            msg = 'Please enter yes, no, y, n, or press enter to choose %s: ' % 'yes' if assume_yes else 'no'
+
+        value = self.promptOptions(('y', 'n', 'yes', 'no', ''), msg)
+        return not value.startswith('n')
+    
+    def promptPassword(self, msg=None):
         if not msg:
             msg = 'Enter password: '
         return getpass(msg)
 
-    def PromptContinue(self, msg=None):
-        if not msg:
-            msg = 'Press enter to continue...'
+    def promptContinue(self, msg=None):
+        return self.promptStr(msg if msg else 'Press enter to continue...')
 
-        raw_input(msg)
-
-##### NOTIFICATIONS ######
-    
-
-    def Notify(self, msg):
-        print msg
-    
-    def NotifyError(self, msg):
-        self.Notify(msg)
-        if self.PromptBool('Exit program? '):
-            exit()
-
-    def NotifyProblemSetup(self, assignment):
-        print '############################################################'
-        print '$$$$$$$$$$$$$$$$$$     PROBLEM      $$$$$$$$$$$$$$$$$$$$$$$$\n'
-
-        try:
-            print assignment.name
-        except AttributeError:
-            print "Next Problem"
-        
-        print '\n\n'    
-        
-    def NotifyProblemTearDown(self, assignment):
-        print '\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
-        print '###########################################################\n\n'
-    
-    def NotifySubmissionSetup(self, submission):
-        pass
-    
-    def NotifySubmissionTearDown(self, submission):
-        pass
+    #TODO:
+    '''
+    def promptObject(self, prompts, mutator_functions):
+    '''
 
 def Test():
     ui = CLUI(None)
 
-    value = ui.PromptBool()
+    print 5
+    value = ui.promptInt()
     print 'Read the value:', value
-    value = ui.PromptPassword()
+    value = ui.promptPassword()
     print 'Read the password:', value
-    value = ui.PromptIndex(['one', 'two', 'three', 'four'])
+    value = ui.promptIndex(['one', 'two', 'three', 'four'])
     print 'Read the value:', value
-    value = ui.PromptFloat()
+    value = ui.promptOptions(['one', 'two', 'three', 'four'])
     print 'Read the value:', value
-    value = ui.PromptInt()
+    value = ui.promptFloat()
     print 'Read the value:', value
-    value = ui.PromptContinue()
+    value = ui.promptBool()
+    print 'Read the value:', value
+    value = ui.promptContinue()
 
 if __name__ == '__main__':
     Test()
