@@ -4,19 +4,25 @@
 
 class BaseUI:
 ####### PROMPTS ########
-      def PromptBool(self, msg, show_help=False):
+      def __init__(self, args):
             pass
 
-      def PromptInt(self, msg, show_help=False):
+      def __PromptType(self, value_type, msg, err_msg='Please enter a valid value.'):
             pass
 
-      def PromptFloat(self, msg, show_help=False):
+      def PromptBool(self, msg=None):
             pass
 
-      def PromptStr(self, msg, show_help=False):
+      def PromptStr(self, msg=None):
             pass
 
-      def PromptIndex(self, msg, options, show_help=False):
+      def PromptInt(self, msg=None):
+            pass
+
+      def PromptFloat(self, msg=None):
+            pass
+
+      def PromptIndex(self, options, msg=None):
             pass
 
       def PromptPassword(self, msg=None):
@@ -29,7 +35,7 @@ class BaseUI:
       def Notify(self, msg):
             pass
 
-      def NotifyError(self, msg, show_help=False):
+      def NotifyError(self, msg):
             pass
       
       def NotifySubmissionSetup(self, submission):
