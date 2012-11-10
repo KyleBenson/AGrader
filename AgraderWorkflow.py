@@ -5,12 +5,12 @@ from Callback import RegisterCallback, RunAllCallbacks
 # @author: Kyle Benson
 # (c) Kyle Benson 2012
 
-class AgraderWorkflow:
+class AgraderWorkflow(object):
     def __init__(self):
         pass
 
-    def registerCallback(self, name, callback):
+    def addCallback(self, name, callback):
         RegisterCallback(self, 'some callback', callback)
 
-    def runCallbacks(self, name):
-        return RunAllCallbacks(self, 'some callback')
+    def runCallbacks(self, name, *args):
+        return RunAllCallbacks(self, 'some callback', *args)

@@ -10,19 +10,21 @@ CRLF = '\r\n'
 
 class AgraderCLUI(CLUI, AgraderBaseUI):
 ##### NOTIFICATIONS ######
+    def __init__(self, args):
+        super(AgraderCLUI, self).__init__(args)
     
     def RawOutput(self, msg):
         print msg
 
-    def Notify(self, msg):
+    def notify(self, msg):
         print msg
     
-    def NotifyError(self, msg):
-        self.Notify(msg)
+    def notifyError(self, msg):
+        self.notify(msg)
         if self.promptBool('Exit program? '):
             exit()
 
-    def NotifyProblemSetup(self, assignment):
+    def notifyProblemSetup(self, assignment):
         #TODO: print in 2nd line
         print '############################################################'
         print '$$$$$$$$$$$$$$$$$$     PROBLEM      $$$$$$$$$$$$$$$$$$$$$$$$\n'
@@ -34,12 +36,22 @@ class AgraderCLUI(CLUI, AgraderBaseUI):
         
         print '\n\n'    
         
-    def NotifyProblemCleanup(self, assignment):
-        print '\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+    def notifyProblemCleanup(self, assignment):
+        #print '\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
         print '###########################################################\n\n'
     
-    def NotifySubmissionSetup(self, submission):
-        pass
+    def notifySubmissionSetup(self, submission):
+        print '############################################################'
+        print '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+        print '$$$$$$$$$$$$$$$$$     SUBMISSION      $$$$$$$$$$$$$$$$$$$$$$\n'
+        
+        try:
+            print 'By %s' % submission.name
+        except AttributeError:
+            print 'By unknown submitter.'
+        print
     
-    def NotifySubmissionCleanup(self, submission):
-        pass
+    def notifySubmissionCleanup(self, submission):
+        print '$$$$$$$$$$$$$$$     END SUBMISSION      $$$$$$$$$$$$$$$$$$$$'
+        print '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+        print '############################################################\n\n\n'

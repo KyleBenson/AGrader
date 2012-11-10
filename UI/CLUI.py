@@ -20,20 +20,23 @@ class CLUI(BasePromptUI):
         value = raw_input(msg if msg else 'Please enter a string: ')
         return value
 
-    def promptType(self, value_type, msg=None, err_msg='Please enter a valid value.'):
+    def promptType(self, value_type, msg=None, err_msg='Please enter a valid value.', default=None):
         '''Repeatedly prompt the user for input, trying to make the input into a an object of value_type'''
         result = None
         while result is None:
             try:
-                result = value_type(raw_input(msg))
+                userInput = raw_input(msg)
+                if userInput == '' and default is not None:
+                    return default
+                result = value_type()
             except ValueError:
                 print err_msg
                 result = None
 
         return result
 
-    def promptInt(self, msg=None):
-        return self.promptType(int, 'Please enter an integer:', 'Not a valid integer.')
+    def promptInt(self, msg=None, default=None):
+        return self.promptType(int, 'Please enter an integer:', 'Not a valid integer.', default=default)
     
     def promptFloat(self, msg=None):
         return self.promptType(float, msg if msg else 'Please enter a float: ', 'Please enter a valid number.')

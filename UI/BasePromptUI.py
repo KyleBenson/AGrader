@@ -2,7 +2,7 @@
 # @author: Kyle Benson
 # (c) Kyle Benson 2012
 
-class BasePromptUI:
+class BasePromptUI(object):
 ####### PROMPTS ########
       def __init__(self, args):
             pass

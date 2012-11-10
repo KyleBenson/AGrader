@@ -26,6 +26,7 @@ USERNAME = 'kebenson@uci.edu'
 from os import listdir, system, getcwd, chdir, getcwd
 from os.path import isdir, join, split, exists
 from sys import argv
+import sys
 from getpass import getpass
 #password = getpass('Enter password: ')
 import argparse
@@ -85,9 +86,11 @@ if __name__ == '__main__':
     args = ParseArgs()
 
     sys.path.append(args.dir)
-    assignment = __import__(args.assignment_file).GetAssignment(args)
-
-    assignment.Run()
+    config = __import__(args.assignment_file)
+    config.workspace.args=args
+    config.workspace.ui = config.workspace.ui(args)
+    config.workspace.gradebook = config.workspace.gradebook(config.workspace)
+    config.workspace.run()
 
 
 
