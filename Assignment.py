@@ -14,13 +14,18 @@ class Assignment(AgraderWorkflow):
     cleanup: runs after grading all the subassignments
     grade: run when gathering grades for a submission
     '''
+
+    def __mergeGrades(self, grades):
+        return self.grades.merge(grades)
     
     def __init__(self):
         self.assignments = {}
         self.grades = {}
+
         
-    def addAssignment(self, assignment):
+    def addAssignment(self, assignment, priority=None):
         self.assignments[assignment.name] = assignment
+        self.addCallback('subassignments', assignment)
     
     def getAssignments(self):
         return self.assignments.itervalues()
@@ -28,18 +33,13 @@ class Assignment(AgraderWorkflow):
     def getAssignment(self, key):
         return self.assignments[key]
 
-    def run(self, parent=None):
-        '''Calls setup, runs each assignment by calling its run method
-        and then calling any grade callbacks, then calls cleanup.'''
-
+    def __call__(self, parent=None):
+        '''Calls setup, runs itself and then each subassignment (by calling it),
+        calls any grade callbacks, then calls cleanup.'''
+        
         self.runCallbacks('setup', self)
-
-        for a in self.getAssignments():
-            a.run(self)
-            self.runCallbacks('grade', a)
-
+        self.runCallbacks('run', self)
+        self.runCallbacks('subassignments', self)
+        self.runCallbacks('grade', self)
         self.runCallbacks('cleanup', self)
-
-    def getGrades(self):
-        return self.grades
 

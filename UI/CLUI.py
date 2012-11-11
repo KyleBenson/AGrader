@@ -16,8 +16,10 @@ class CLUI(BasePromptUI):
             self.verbose = False
     
 ####### PROMPTS ########
-    def promptStr(self, msg=None):
-        value = raw_input(msg if msg else 'Please enter a string: ')
+    def promptStr(self, msg=None,default=None):
+        value = raw_input(msg if msg else 'Please enter a string%s: ' % (' (default is %s)' % default) if default is not None else '')
+        if default is not None and not value:
+            value = default
         return value
 
     def promptType(self, value_type, msg=None, err_msg='Please enter a valid value.', default=None):
@@ -28,7 +30,7 @@ class CLUI(BasePromptUI):
                 userInput = raw_input(msg)
                 if userInput == '' and default is not None:
                     return default
-                result = value_type()
+                result = value_type(userInput)
             except ValueError:
                 print err_msg
                 result = None
@@ -36,12 +38,14 @@ class CLUI(BasePromptUI):
         return result
 
     def promptInt(self, msg=None, default=None):
-        return self.promptType(int, 'Please enter an integer:', 'Not a valid integer.', default=default)
+        if msg is None:
+            msg = 'Please enter an integer%s:' % ((' (default is %i)' % default) if default is not None else '')
+        return self.promptType(int, msg, 'Not a valid integer.', default=default)
     
     def promptFloat(self, msg=None):
         return self.promptType(float, msg if msg else 'Please enter a float: ', 'Please enter a valid number.')
 
-    def promptOptions(self, options, msg=None, err_msg=None):
+    def promptOptions(self, options, msg=None, err_msg=None, default=None):
         if msg is None:
             msg = 'Please enter one of: %s%s' % (', '.join(options), CRLF)
 
@@ -54,7 +58,8 @@ class CLUI(BasePromptUI):
             except TypeError:
                 raise ValueError
 
-        return self.promptType(__optionsCheck, msg, 'Entry not found.' if err_msg is None else err_msg)
+        return self.promptType(__optionsCheck, msg, 'Entry not found.' if err_msg is None else err_msg,
+                               default=default)
 
     def promptIndex(self, options, msg=None, sep=(CRLF + '  %s: ')):
         if msg is None:
@@ -71,11 +76,11 @@ class CLUI(BasePromptUI):
 
         return self.promptType(__IdxCheck, msg, 'Please enter a valid index.')
     
-    def promptBool(self, msg=None, assume_yes=True):
+    def promptBool(self, msg=None, assume_yes=True, default=None):
         if not msg:
             msg = 'Please enter yes, no, y, n, or press enter to choose %s: ' % 'yes' if assume_yes else 'no'
 
-        value = self.promptOptions(('y', 'n', 'yes', 'no', ''), msg)
+        value = self.promptOptions(('y', 'n', 'yes', 'no', ''), msg, default=default)
         return not value.startswith('n')
     
     def promptPassword(self, msg=None):
@@ -92,21 +97,39 @@ class CLUI(BasePromptUI):
     '''
 
 def Test():
+    import sys
+    
+#    if len(sys.argv) > 1:
+ #       magic = argv[1]
+
     ui = CLUI(None)
 
-    print 5
     value = ui.promptInt()
     print 'Read the value:', value
+    value = ui.promptInt(default=3)
+    print 'Read the value:', value
+
     value = ui.promptPassword()
     print 'Read the password:', value
+
     value = ui.promptIndex(['one', 'two', 'three', 'four'])
     print 'Read the value:', value
+
     value = ui.promptOptions(['one', 'two', 'three', 'four'])
     print 'Read the value:', value
+
+    value = ui.promptOptions(['one', 'two', 'three', 'four'], default='never!!')
+    print 'Read the value:', value
+
     value = ui.promptFloat()
     print 'Read the value:', value
+
     value = ui.promptBool()
     print 'Read the value:', value
+
+    value = ui.promptBool('give a bool value, but false by default', default='n')
+    print 'Read the value:', value
+
     value = ui.promptContinue()
 
 if __name__ == '__main__':

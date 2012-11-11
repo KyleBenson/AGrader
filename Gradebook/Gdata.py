@@ -3,22 +3,39 @@
 # (c) Kyle Benson 2012
 
 from BaseGradebook import BaseGradebook
+from threading import Thread
 
-class GdataSpreadsheet(BaseGradebook):
+class GdataSpreadsheet(BaseGradebook, Thread):
     '''Provides interaction with Google docs spreadsheets as an external gradebook service.'''
 
-    def __init__(self, workspace):
-        self.ui = workspace.ui
+    def __init__(self, ui, args=None):
+        super(GdataSpreadsheet, self).__init__(ui)
+        Thread.__init__(self)
+
         self.rowIndexMap = {}
 
-        self.primaryKey = 'ucinetid'
-        self.spreadsheetName = 'ICS23-Lab3-grades'
-        self.username = 'kebenson@uci.edu'
+        #TODO: put this stuff in base UI
+        if args:
+            self.primaryKey = args.submission_key
+            self.spreadsheetName = args.assignment_key
+            self.username = args.username
+        else:            
+            self.primaryKey = 'ucinetid'
+            self.spreadsheetName = 'ICS23-Lab3-grades'
+            self.username = 'kebenson@uci.edu'
 
-        new_user = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username)
+        self.username = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username,
+                                          default=self.username)
         self.password = self.ui.promptPassword('Enter password for ' + self.username + ': ')
-        import gdata.spreadsheet.service
-        self.gd_client = gdata.spreadsheet.service.SpreadsheetsService()
+        import gdata.spreadsheet.service as service
+        self.service = service
+
+        self.start()
+
+
+    def run(self):
+        '''Logs into Gdocs and gets the specified worksheet etc.'''
+        self.gd_client = self.service.SpreadsheetsService() # prepend: gdata.spreadsheet.
         self.gd_client.email = self.username
         self.gd_client.password = self.password
         self.gd_client.ProgrammaticLogin()
@@ -41,10 +58,15 @@ class GdataSpreadsheet(BaseGradebook):
         wksht_id = feed.entry[0].id.text.rsplit('/', 1)[1]
         self.gdoc_feed = self.gd_client.GetListFeed(key,wksht_id)
 
+
     def submitGrades(self, grades, key):
+        self.join()
         self.gd_client.UpdateRow(self.gdoc_feed.entry[self.rowIndexMap[key]],grades)
 
     def getGrades(self, key):
+        ###  TODO: build map once of key->index entries
+        self.join()
+
         # Find the row corresponding to this KEY
         for i,entry in enumerate(self.gdoc_feed.entry):
             if entry.custom[self.primaryKey].text and entry.custom[self.primaryKey].text.strip().lower() == key:

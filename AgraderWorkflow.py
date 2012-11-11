@@ -10,7 +10,7 @@ class AgraderWorkflow(object):
         pass
 
     def addCallback(self, name, callback):
-        RegisterCallback(self, 'some callback', callback)
+        RegisterCallback(self, name, callback)
 
     def runCallbacks(self, name, *args):
-        return RunAllCallbacks(self, 'some callback', *args)
+        return RunAllCallbacks(self, name, *args)

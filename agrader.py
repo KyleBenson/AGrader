@@ -4,24 +4,8 @@
 # (c) Kyle Benson 2012
 
 AGRADER_DESCRIPTION=\
+'''Loads the assignments in the specified directory.  See documentation for information about workspaces, UIs, Gradebooks, and creating Assignments.
 '''
-Summary: ./grade-labs.py projects_directory grading_comments_directory email_appendix_file
-
-runs through all of the directories representing Eclipse projects in the directory specified ('.' by default) and (attempts to) run the project.
-
-Between each project, it prompts the user for a grade of pass or fail (p or f button)
-and then for a reason, which is mapped to any other key as defined by the entries in the directory 'grading-reasons' or arg2 if included.
-
-A file for a grading reason follows the following format:
-a single character for a keystroke on the first line
-a message to be included in the grade email.
-
-An optional 3rd argument provides a file from which the remainder of the email comes.  Use for announcements, general observations, refined directions, etc.
-'''
-
-#show_profile = False
-#output_connector = None
-USERNAME = 'kebenson@uci.edu'
 
 from os import listdir, system, getcwd, chdir, getcwd
 from os.path import isdir, join, split, exists
@@ -31,13 +15,42 @@ from getpass import getpass
 #password = getpass('Enter password: ')
 import argparse
 
+# Some failsafe defaults for this version installation
+# ($ Not yet supported! $)
+DEFAULT_CONFIG_DIR = '~/.agrader/'
+DEFAULT_CONFIG_FILE = 'config'
+DEFAULT_ASSIGNMENT_FILE = 'assignment'
+DEFAULT_ASSIGNMENT_DIR = '.'
+DEFAULT_USERNAME = 'kebenson@uci.edu'
+DEFAULT_SUBMISSION_KEY = 'ucinetid'
+DEFAULT_ASSIGNMENT_KEY = 'ICS23-Lab3-grades'
+
 CRLF = '\r\n'
 
-#TODO:
-def ReadConfig():
-    pass
+def ReadConfig(args):
+    # try loading user config file from config directory
+    oldPath = sys.path[:]
+    sys.path.append(args.config_dir)
 
-def ParseArgs():
+    try:
+        workspace = __import__(args.config_file)
+    except ImportError:
+        try: # it in the assignment directory
+            sys.path.append(args.assignment_dir)
+            workspace = __import__(args.config_file)
+        except ImportError:
+            #give up and get the default one
+            if args.verbose:
+                print 'Using default workspace'
+            from Workspace import Workspace
+            workspace = Workspace.GetDefault(args)
+    finally:
+        sys.path[:] = oldPath
+
+    return workspace
+
+
+def ParseArgs(args):
 ##################################################################################
 #################      ARGUMENTS       ###########################################
 # ArgumentParser.add_argument(name or flags...[, action][, nargs][, const][, default][, type][, choices][, required][, help][, metavar][, dest])
@@ -51,17 +64,24 @@ def ParseArgs():
                                      #epilog='Text to display at the end of the help print',
                                      )
 
-    # Specify files/resources
-    parser.add_argument('dir',
+    # Specify assignment files/resources
+    parser.add_argument('-d', '--assignment_dir', metavar='assignment_dir',
+                        nargs='+', default=DEFAULT_ASSIGNMENT_DIR,
                         help='''Directory in which to find the assignment files and submissions''')
+    parser.add_argument('--assignment_file', action='store', default=DEFAULT_ASSIGNMENT_FILE,
+                        help='''Python file that configures the assignment (default = %(default))''')
     parser.add_argument('--comments', '-c', nargs='?',
                         help='''Directory in which to find text files containing canned comments''')
     parser.add_argument('--email_appendix', '-ea', nargs='?',
                         help='''File containing an appendix to include on all generated emails to students''')
     parser.add_argument('--script_inputs', action='store',
                         help='''Use the script inputs in the specified directory (their names should match the problems/assignment)''')
-    parser.add_argument('--assignment_file', action='store', default='assignment_config',
-                        help='''Python file that configures the assignment (default = %(default))''')
+
+    #grading
+    parser.add_argument('--submission_key', action='store', default=DEFAULT_SUBMISSION_KEY,
+                        help='''Key used to access/submit grades for an individual submission''')
+    parser.add_argument('--assignment_key', action='store', default=DEFAULT_ASSIGNMENT_KEY,
+                        help='''Key used to access/submit grades for an whole assignment''')
 
     # Control grading flow
     parser.add_argument('--submissions', nargs='+',
@@ -72,25 +92,29 @@ def ParseArgs():
                         help='''Force regrading of submissions''')
 
     # User preferences
-    parser.add_argument('--username', action='store', default=USERNAME,
+    parser.add_argument('--username', action='store', default=DEFAULT_USERNAME,
                         help='''Username for logging into Gradebook, retrieving submissions, etc.''')
     parser.add_argument('--passwd', action='store', 
                         help='''Password for logging into Gradebook, retrieving submissions, etc.''')
     parser.add_argument('--verbose', action='store_true', 
                         help='''Verbosely print logging / debugging information during execution''')
 
-    return parser.parse_args()
+    # Locations
+    parser.add_argument('--config_dir', default=DEFAULT_CONFIG_DIR,
+                        help='''Directory in which to find the configuration files and resources (default = %(default)s''')
+    parser.add_argument('--config_file', default=DEFAULT_CONFIG_FILE,
+                        help='''User's configuration file (default = %(default)s''')
+
+    return parser.parse_args(args)
+
+
+################################### MAIN ###################################
+def Main():
+
+    args = ParseArgs(argv[1:])
+    workspace = ReadConfig(args)
+    workspace()
+
 
 if __name__ == '__main__':
-
-    args = ParseArgs()
-
-    sys.path.append(args.dir)
-    config = __import__(args.assignment_file)
-    config.workspace.args=args
-    config.workspace.ui = config.workspace.ui(args)
-    config.workspace.gradebook = config.workspace.gradebook(config.workspace)
-    config.workspace.run()
-
-
-
+    Main()
