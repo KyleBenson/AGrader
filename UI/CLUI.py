@@ -42,8 +42,9 @@ class CLUI(BasePromptUI):
             msg = 'Please enter an integer%s:' % ((' (default is %i)' % default) if default is not None else '')
         return self.promptType(int, msg, 'Not a valid integer.', default=default)
     
-    def promptFloat(self, msg=None):
-        return self.promptType(float, msg if msg else 'Please enter a float: ', 'Please enter a valid number.')
+    def promptFloat(self, msg=None, default=None):
+        return self.promptType(float, msg if msg else 'Please enter a float: ',
+                               'Please enter a valid number.', default=default)
 
     def promptOptions(self, options, msg=None, err_msg=None, default=None):
         if msg is None:
@@ -76,11 +77,16 @@ class CLUI(BasePromptUI):
 
         return self.promptType(__IdxCheck, msg, 'Please enter a valid index.')
     
-    def promptBool(self, msg=None, assume_yes=True, default=None):
+    def promptBool(self, msg=None, default=None):
         if not msg:
-            msg = 'Please enter yes, no, y, n, or press enter to choose %s: ' % 'yes' if assume_yes else 'no'
+            msg = 'Please enter yes, no, y, n, or press enter to choose %s: ' % 'yes' if default else 'no'
+
+        # Change default from a boolean value to the corresponding str
+        if default:
+            default = ('y' if default else 'n')
 
         value = self.promptOptions(('y', 'n', 'yes', 'no', ''), msg, default=default)
+        
         return not value.startswith('n')
     
     def promptPassword(self, msg=None):
