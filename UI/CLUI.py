@@ -82,7 +82,7 @@ class CLUI(BasePromptUI):
             msg = 'Please enter yes, no, y, n, or press enter to choose %s: ' % 'yes' if default else 'no'
 
         # Change default from a boolean value to the corresponding str
-        if default:
+        if default is not None:
             default = ('y' if default else 'n')
 
         value = self.promptOptions(('y', 'n', 'yes', 'no', ''), msg, default=default)
