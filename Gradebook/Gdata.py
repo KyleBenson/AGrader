@@ -24,21 +24,32 @@ class GdataSpreadsheet(BaseGradebook, Thread):
             self.spreadsheetName = 'ICS23-Lab3-grades'
             self.username = 'kebenson@uci.edu'
 
-        self.username = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username,
-                                          default=self.username)
-        self.password = self.ui.promptPassword('Enter password for ' + self.username + ': ')
+        self.promptLoginInfo()
+
         import gdata.spreadsheet.service as service
         self.service = service
 
         self.start()
 
+    def promptLoginInfo(self):
+        self.username = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username,
+                                          default=self.username)
+        self.password = self.ui.promptPassword('Enter password for ' + self.username + ': ')
 
     def run(self):
         '''Logs into Gdocs and gets the specified worksheet etc.'''
-        self.gd_client = self.service.SpreadsheetsService() # prepend: gdata.spreadsheet.
-        self.gd_client.email = self.username
-        self.gd_client.password = self.password
-        self.gd_client.ProgrammaticLogin()
+        success = False
+
+        while not success:
+            self.gd_client = self.service.SpreadsheetsService() # prepend: gdata.spreadsheet.
+            self.gd_client.email = self.username
+            self.gd_client.password = self.password
+            try:
+                self.gd_client.ProgrammaticLogin()
+                success = True
+            except: #BadAuthentication:
+                self.ui.notifyError("Invalid login info! Abort?")
+                self.promptLoginInfo()
 
         docs = self.gd_client.GetSpreadsheetsFeed()
         spreads = []
@@ -60,8 +71,11 @@ class GdataSpreadsheet(BaseGradebook, Thread):
 
 
     def submitGrades(self, grades, key):
-        self.join()
-        self.gd_client.UpdateRow(self.gdoc_feed.entry[self.rowIndexMap[key]],grades)
+        try:
+            self.join()
+            self.gd_client.UpdateRow(self.gdoc_feed.entry[self.rowIndexMap[key]],grades)
+        except AttributeError as e:
+            self.ui.notifyError("Problem submitting grades for %s: %s\n%s" % (key, grades, e))
 
     def getGrades(self, key):
         ###  TODO: build map once of key->index entries

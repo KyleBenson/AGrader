@@ -69,7 +69,7 @@ def ParseArgs(args):
                         nargs='+', default=DEFAULT_ASSIGNMENT_DIR,
                         help='''Directory in which to find the assignment files and submissions''')
     parser.add_argument('--assignment_file', action='store', default=DEFAULT_ASSIGNMENT_FILE,
-                        help='''Python file that configures the assignment (default = %(default))''')
+                        help='''Python file that configures the assignment (default = %(default)s)''')
     parser.add_argument('--comments', '-c', nargs='?',
                         help='''Directory in which to find text files containing canned comments''')
     parser.add_argument('--email_appendix', '-ea', nargs='?',
@@ -81,7 +81,7 @@ def ParseArgs(args):
     parser.add_argument('--submission_key', action='store', default=DEFAULT_SUBMISSION_KEY,
                         help='''Key used to access/submit grades for an individual submission''')
     parser.add_argument('--assignment_key', action='store', default=DEFAULT_ASSIGNMENT_KEY,
-                        help='''Key used to access/submit grades for an whole assignment''')
+                        help='''Key used to access/submit grades for a whole assignment''')
 
     # Control grading flow
     parser.add_argument('--submissions', nargs='+',
