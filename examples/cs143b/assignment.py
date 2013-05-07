@@ -10,17 +10,18 @@ import time
 # SET USER INTERFACES
 # choose which user interface and gradebook connector you want to use
 # make sure to use the 'as' keyword so Agrader can reference it properly
-sys.path.append('~/repos/AGrader') #directory where I store the Agrader source code
-from Assignment import Assignment
+import AGrader.Assignment as Assignment
 
-# get workspace
-from Workspace import Workspace
-workspace = Workspace.GetWorkspace()
-
-class MyAssignment(Assignment):
+class MyAssignment(Assignment.Assignment):
     
     def __init__(self, submission, args):
         super(MyAssignment, self).__init__()
+
+        # get workspace from package
+        workspace = AGrader.Workspace.GetWorkspace()
+
+        # import example callbacks for this class
+        from AGrader.examples import cs143b_callbacks
 
         self.submission_deadline = time.strptime('Tue Apr 23 04:00:00 2013')
         
@@ -34,11 +35,6 @@ class MyAssignment(Assignment):
         self.grades = workspace.getGrades(self.grade_key)
         self.gradebook = workspace.gradebook
         self.ui = workspace.ui
-
-        # Add assignment directory to get callbacks
-        old_path, sys.path = sys.path[:], sys.path + [args.assignment_dir]
-        import cs143b_callbacks
-        sys.path = old_path
 
         # Callbacks
         self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
