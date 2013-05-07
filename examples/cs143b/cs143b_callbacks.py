@@ -69,7 +69,7 @@ def ViewSource(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
     # open all of the ones within the directory that looks like:
     # $ASSIGNMENT_ROOT/submissions/ucinetid/
-    for (dirpath, dirnames, filenames) in os.walk(os.path.join(self.args.assignment_dir), 'submissions', self.name)):
+    for (dirpath, dirnames, filenames) in os.walk(os.path.join(self.args.assignment_dir), 'submissions', self.name):
         for f in filenames:
             os.system('less ' + filename)
     penalty = self.ui.promptInt("Did they lose any points for source code? ", default=0)

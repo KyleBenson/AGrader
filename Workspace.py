@@ -55,10 +55,12 @@ class Workspace(AgraderWorkflow):
 
 
     def getAssignments(self, assignment_dir):
-        '''Import all of the assignments in the specified directory'''
+        '''Import all of the assignments in the specified directory.
+        Currently only imports the assignment specified by the argument assignment_file'''
 
         for modname in listdir(assignment_dir):
-            if modname.endswith(".py"):
+            # only try importing file if it's a python file and it matches the assignment file we want
+            if modname.endswith(".py") and modname[:-3] == self.args.assignment_file:
                 if self.args.verbose:
                     self.ui.notify('Checking module %s' % modname)
 

@@ -12,7 +12,6 @@ import time
 # make sure to use the 'as' keyword so Agrader can reference it properly
 sys.path.append('~/repos/AGrader') #directory where I store the Agrader source code
 from Assignment import Assignment
-from cs143b_callbacks import *
 
 # get workspace
 from Workspace import Workspace
@@ -23,7 +22,7 @@ class MyAssignment(Assignment):
     def __init__(self, submission, args):
         super(MyAssignment, self).__init__()
 
-        self.submission_deadline = time.strptime('Tue Apr 23 04:00:00 2013 PDT')
+        self.submission_deadline = time.strptime('Tue Apr 23 04:00:00 2013')
         
         self.args = args
         self.submission = submission
@@ -36,16 +35,21 @@ class MyAssignment(Assignment):
         self.gradebook = workspace.gradebook
         self.ui = workspace.ui
 
+        # Add assignment directory to get callbacks
+        old_path, sys.path = sys.path[:], sys.path + [args.assignment_dir]
+        import cs143b_callbacks
+        sys.path = old_path
+
         # Callbacks
-        self.addCallback('setup', SubmissionSetup)
+        self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
         #self.addCallback('grade', GradeOutput)
-        self.addCallback('grade', ViewSource)
-        self.addCallback('cleanup', SubmissionCleanup)
+        self.addCallback('grade', cs143b_callbacks.ViewSource)
+        self.addCallback('cleanup', cs143b_callbacks.SubmissionCleanup)
 
 def SubmissionGenerator(args):
-'''
-Yields the file name of each output submission file if it wasn't already graded.
-'''
+    '''
+    Yields the file name of each output submission file if it wasn't already graded.
+    '''
     temp_filename = os.path.join(args.assignment_dir, '.temp_output_file')
 
     for username in sorted(listdir(join(args.assignment_dir, 'submissions'))):
