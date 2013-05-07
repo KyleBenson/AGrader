@@ -56,14 +56,14 @@ class Workspace(AgraderWorkflow):
 
     def getAssignments(self, assignment_dir):
         '''Import all of the assignments in the specified directory'''
-        
+
         for modname in listdir(assignment_dir):
             if modname.endswith(".py"):
                 if self.args.verbose:
                     self.ui.notify('Checking module %s' % modname)
 
-                # look only in the assignment_dir directory when importing
-                oldpath, path[:] = path[:], [assignment_dir]
+                # look also in the assignment_dir directory when importing
+                oldpath, path[:] = path[:], path + [assignment_dir]
 
                 try:
                     module = __import__(modname[:-3])
@@ -127,6 +127,9 @@ class Workspace(AgraderWorkflow):
         self.runCallbacks('cleanup', self)
 
     def getGrades(self, key):
+        '''
+        Returns the gradebook associated with the given key.
+        '''
         if self.gradebook:
             return self.gradebook.getGrades(key)
         return None

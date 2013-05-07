@@ -19,8 +19,8 @@ import argparse
 # ($ Not yet supported! $)
 DEFAULT_CONFIG_DIR = '~/.agrader/'
 DEFAULT_CONFIG_FILE = 'config'
+DEFAULT_ASSIGNMENT_DIR = getcwd()
 DEFAULT_ASSIGNMENT_FILE = 'assignment'
-DEFAULT_ASSIGNMENT_DIR = '.'
 DEFAULT_USERNAME = 'kebenson@uci.edu'
 DEFAULT_SUBMISSION_KEY = 'ucinetid'
 DEFAULT_ASSIGNMENT_KEY = 'CS143B-Project1-grades'
@@ -67,8 +67,8 @@ def ParseArgs(args):
 
     # Specify assignment files/resources
     parser.add_argument('-d', '--assignment_dir', metavar='assignment_dir',
-                        nargs='+', default=DEFAULT_ASSIGNMENT_DIR,
-                        help='''Directory in which to find the assignment files and submissions''')
+                        default=DEFAULT_ASSIGNMENT_DIR,
+                        help='''Directory in which to find the assignment files and submissions (default = %(default)s)''')
     parser.add_argument('--assignment_file', action='store', default=DEFAULT_ASSIGNMENT_FILE,
                         help='''Python file that configures the assignment (default = %(default)s)''')
     parser.add_argument('--comments', '-c', nargs='?',

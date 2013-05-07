@@ -16,12 +16,17 @@ class GdataSpreadsheet(BaseGradebook, Thread):
 
         #TODO: put this stuff in base UI
         if args:
+            self.args = args
             self.primaryKey = args.submission_key
             self.spreadsheetName = args.assignment_key
             self.username = args.username
-        else:            
+        else:
+            #make some args
+            self.args = lambda:0
+            self.args.verbose = True
+
             self.primaryKey = 'ucinetid'
-            self.spreadsheetName = 'ICS23-Lab3-grades'
+            self.spreadsheetName = 'CS143B-Project1-grades'
             self.username = 'kebenson@uci.edu'
 
         self.promptLoginInfo()
@@ -58,10 +63,16 @@ class GdataSpreadsheet(BaseGradebook, Thread):
         for i in docs.entry: spreads.append(i.title.text)
         spread_number = None
         for i,j in enumerate(spreads):
-            if j == self.spreadsheetName: spread_number = i
+            if self.args.verbose:
+                self.ui.notify("Gradebook: Checking spreadsheet %s" % j)
+            if j == self.spreadsheetName:
+                spread_number = i
+                if self.args.verbose:
+                    self.ui.notify("Gradebook: Loading spreadsheet %s" % self.spreadsheetName)
+                break
+
         if spread_number == None:
-            print "Error downloading gradebook from Google Spreadsheet. spread_number is None"
-            exit
+            self.ui.notifyError("Error downloading gradebook %s from Google Spreadsheet. spread_number is None" % self.spreadsheetName)
 
         #Get correct worksheet feed, then get first tab
         key = docs.entry[spread_number].id.text.rsplit('/', 1)[1]
@@ -83,7 +94,16 @@ class GdataSpreadsheet(BaseGradebook, Thread):
 
         # Find the row corresponding to this KEY
         for i,entry in enumerate(self.gdoc_feed.entry):
-            if entry.custom[self.primaryKey].text and entry.custom[self.primaryKey].text.strip().lower() == key:
+            # check if this is the row we want
+            # this first only checks if there's text here
+            if entry.custom[self.primaryKey].text:
+                key_value = entry.custom[self.primaryKey].text.strip().lower()
+                if key_value != key:
+                    continue
+
+                if self.args.verbose:
+                    self.ui.notify("Found record: " + key_value)
+
                 self.rowIndexMap[key] = i
 
                 #store dictionary for updating row later
