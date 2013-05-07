@@ -71,13 +71,19 @@ def SubmissionGenerator(args):
 ####################  TEST MAIN  #####################################
 ######################################################################
 
-def Test():
+def TestGenerator():
     args = lambda:0
     args.assignment_dir = os.getcwd()
     args.submissions = None
     for sub in SubmissionGenerator(args):
         print sub.name
-    #assignment = MyAssignment(submission, args)
+
+def TestGradeOutput():
+    pass
+
+def Test():
+    TestGenerator()
+    TestGradeOutput()
 
 if __name__ == '__main__':
     print 'Testing...'
