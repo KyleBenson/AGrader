@@ -1,6 +1,11 @@
-import Workspace, Assignment
+import AgraderWorkflow
+import Workspace
+import Assignment
 
-__all__ = ['examples',
+__all__ = ['AgraderWorkflow',
+           'Workspace',
+           'Assignment',
            'UI',
            'Gradebook',
+           'examples',
            ]

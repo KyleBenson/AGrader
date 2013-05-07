@@ -2,7 +2,7 @@
 # @author: Kyle Benson
 # (c) Kyle Benson 2012
 
-from AgraderWorkflow import AgraderWorkflow
+from AGrader.AgraderWorkflow import AgraderWorkflow
 
 class BaseGradebook(AgraderWorkflow):
     '''Provides interaction with some external gradebook service.'''

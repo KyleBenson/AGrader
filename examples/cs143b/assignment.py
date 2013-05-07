@@ -10,18 +10,15 @@ import time
 # SET USER INTERFACES
 # choose which user interface and gradebook connector you want to use
 # make sure to use the 'as' keyword so Agrader can reference it properly
-import AGrader.Assignment as Assignment
+import AGrader
 
-class MyAssignment(Assignment.Assignment):
+class MyAssignment(AGrader.Assignment.Assignment):
     
     def __init__(self, submission, args):
         super(MyAssignment, self).__init__()
 
         # get workspace from package
-        workspace = AGrader.Workspace.GetWorkspace()
-
-        # import example callbacks for this class
-        from AGrader.examples import cs143b_callbacks
+        workspace = AGrader.Workspace.Workspace.GetWorkspace()
 
         self.submission_deadline = time.strptime('Tue Apr 23 04:00:00 2013')
         
@@ -37,6 +34,9 @@ class MyAssignment(Assignment.Assignment):
         self.ui = workspace.ui
 
         # Callbacks
+        # import example callbacks for this class
+        from AGrader.examples.cs143b import cs143b_callbacks
+
         self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
         #self.addCallback('grade', GradeOutput)
         self.addCallback('grade', cs143b_callbacks.ViewSource)
@@ -65,3 +65,20 @@ def SubmissionGenerator(args):
     #finalCleanup
     if os.path.exists(temp_filename):
         os.remove(temp_filename)
+
+
+######################################################################
+####################  TEST MAIN  #####################################
+######################################################################
+
+def Test():
+    args = lambda:0
+    args.assignment_dir = os.getcwd()
+    args.submissions = None
+    for sub in SubmissionGenerator(args):
+        print sub.name
+    #assignment = MyAssignment(submission, args)
+
+if __name__ == '__main__':
+    print 'Testing...'
+    Test()
