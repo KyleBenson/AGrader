@@ -20,7 +20,7 @@ with open('roster.dat', 'r') as roster_file:
         #print "sid: %s, ucid: %s" % (sid, ucid)
 
         old_filename = os.path.join(submission_dir, sid + '.txt')
-        new_filename = os.path.join(submission_dir, ucid)
+        new_filename = os.path.join(submission_dir, ucid).lower()
 
         try:
             os.rename(old_filename, new_filename)
