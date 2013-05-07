@@ -1,2 +1,2 @@
 #!/bin/bash
-find sources/ -type f | xargs less
+find sources/ -type f | sort | xargs -L 1 less
