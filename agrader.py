@@ -23,11 +23,12 @@ DEFAULT_ASSIGNMENT_FILE = 'assignment'
 DEFAULT_ASSIGNMENT_DIR = '.'
 DEFAULT_USERNAME = 'kebenson@uci.edu'
 DEFAULT_SUBMISSION_KEY = 'ucinetid'
-DEFAULT_ASSIGNMENT_KEY = 'ICS23-Lab3-grades'
+DEFAULT_ASSIGNMENT_KEY = 'CS143B-Project1-grades'
 
 CRLF = '\r\n'
 
 def ReadConfig(args):
+    #TODO: try loading from assignment first?  combine multiples?
     # try loading user config file from config directory
     oldPath = sys.path[:]
     sys.path.append(args.config_dir)

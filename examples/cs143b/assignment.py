@@ -23,13 +23,8 @@ class MyAssignment(Assignment):
     def __init__(self, submission, args):
         super(MyAssignment, self).__init__()
 
-        # skip if already graded
-        if submission.endswith('.graded'):
-            continue
-
-        self.submission_deadline = time.strptime('Mon Apr 22 23:59:59 2013 PDT')
+        self.submission_deadline = time.strptime('Tue Apr 23 04:00:00 2013 PDT')
         
-        self.temp_filename = os.path.join(args.assignment_dir, '.temp_output_file')
         self.args = args
         self.submission = submission
 
@@ -43,19 +38,28 @@ class MyAssignment(Assignment):
 
         # Callbacks
         self.addCallback('setup', SubmissionSetup)
+        #self.addCallback('grade', GradeOutput)
+        self.addCallback('grade', ViewSource)
         self.addCallback('cleanup', SubmissionCleanup)
-        #self.addCallback('grade', SubmitGrades)
 
 def SubmissionGenerator(args):
+'''
+Yields the file name of each output submission file if it wasn't already graded.
+'''
     temp_filename = os.path.join(args.assignment_dir, '.temp_output_file')
 
     for username in sorted(listdir(join(args.assignment_dir, 'submissions'))):
         submission = join(args.assignment_dir, 'submissions', username)
-        # If we specified a specific set of submissions, only execute for them
-        if (not args.regrade and '.graded' in listdir(submission)) or (args.submissions and username not in args.submissions):
+        # skip if already graded, unless we are regrading
+        if submission.endswith('.graded') and not args.regrade:
+            continue
+
+        # If we specified a specific set of submissions, only execute for them,
+        if (args.submissions and username not in args.submissions):
             continue
 
         sub = MyAssignment(submission, args)
+        sub.temp_filename = temp_filename
         yield sub
 
     #finalCleanup
