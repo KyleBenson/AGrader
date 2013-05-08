@@ -101,7 +101,7 @@ class GdataSpreadsheet(BaseGradebook, Thread):
                 if key_value != key:
                     continue
 
-                if self.args.verbose:
+                if self.args.verbose >= 3:
                     self.ui.notify("Found record: " + key_value)
 
                 self.rowIndexMap[key] = i

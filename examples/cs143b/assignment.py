@@ -24,6 +24,7 @@ class MyAssignment(AGrader.Assignment.Assignment):
         
         self.args = args
         self.submission = submission
+        self.expected_output_filename = 'expected_output.txt'
 
         username = os.path.split(submission)[-1].strip().lower()
         self.grade_key = username
@@ -78,11 +79,25 @@ def TestGenerator():
     for sub in SubmissionGenerator(args):
         print sub.name
 
+def TestParseOutput():
+    from AGrader.examples.cs143b import cs143b_callbacks
+    tests = cs143b_callbacks.ParseOutput('expected_output.txt')
+    print 'expected output:'
+    print 'total of %d tests:\n%s' % (len(tests), tests)
+    print
+
+    tests2 = cs143b_callbacks.ParseOutput('submissions/tcathers')
+    print 'actual output:'
+    print 'total of %d tests:\n%s' % (len(tests2), tests2)
+    print
+    print 'are they equal? %d' % (tests == tests2)
+
 def TestGradeOutput():
     pass
 
 def Test():
-    TestGenerator()
+    #TestGenerator()
+    TestParseOutput()
     TestGradeOutput()
 
 if __name__ == '__main__':

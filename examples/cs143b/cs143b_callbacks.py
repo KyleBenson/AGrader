@@ -75,88 +75,61 @@ def ViewSource(self, prompt=True):
     penalty = self.ui.promptInt("Did they lose any points for source code? ", default=0)
     self.grades['source_code'] = self.source_code_points - penalty
 
+def ParseOutput(fname):
+    tests = []
+    # to find  the boundary between tests, look for 'init is running'
+    # but that string could appear in multiple lines at once, possibly with a newline in between
+    # so keep a flag that tells us when we're inside a test or when we're at it's boundary
+    # note that we start out with no tests present and so the first occurrence of 'init is running' signals the start of the first test boundary
+    inside_test = True
+    with open(fname) as f:
+        # add each line to the current test
+        #    after massaging the line (removing newlines, lowercasing everything, etc.)
+        for line in f.readlines():
+            #remove all whitespace and lowercase
+            #also remove the phrase 'is running' since the expected tests don't have it
+            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','')
+
+            #ignore the 'process terminated' message that some people put at the end.
+            if 'terminated' in line:
+                continue
+
+            # increment the test # when we reach the end of one
+            # but only if we were previously inside a test (or at the very beginning) so as to avoid adding extra tests that aren't really there
+            if 'init' in line and inside_test:
+                tests.append([])
+                inside_test = False
+            # ignore newlines
+            elif line == '\n':
+                continue
+            # this is a line inside the test
+            elif 'init' not in line:
+                inside_test = True
+
+            # add this line to the last test
+            if inside_test:
+                tests[-1].append(line)
+
+    return tests
+
+
 def GradeOutput(self):
+    '''
+    Here we just compare the output of two different programs, one is expected to be completely correct.
+    We first parse each file into the individual tests since they are all in one file and each test is worth the same amount.
+    Then compare each test one by one, prompting grader if they differ.
+    '''
     program_dir = os.path.split(os.path.split(self.filename)[0])[-1]
 
-    if 'HashMap' in self.name:
-        usedtrailers = False
-
-    with open(self.filename) as f:
-        expected_values = self.expected_big_oh[program_dir]
-        nchecks = len(expected_values)
-        nchecked = 0
-        total_wrong = 0
-
-        for line in f.readlines():
-            if nchecked >= nchecks:
-                if 'HashMap' in self.name:
-                    line2 = line.replace(' ', '')
-                    if 'newLN<K,V>(null,null)' in line2 or 'newLN(null,null)' in line2 and not line2.startswith('//'):
-                        usedtrailers = True
-                        break
-                    else:
-                        continue
-                else:
-                    break
-
-            #remove all whitespace
-            line = line.replace(' ', '').replace('\t','')
-
-            if nchecked or (line.startswith('//add:') or line.startswith('//put:') and not nchecked):
-
-                # lowercase it alland strip out * and -, then replace treeheight with logn
-                # because most people just answer that way, also 2 cuz some people just silly
-                massaged_line = line.replace('*','').replace('-','').replace('2','').lower().replace('treeheight', 'logn').replace('log(n)', 'logn').replace('iterables','')
-
-                #slice off comments
-                idx = massaged_line.find(')')
-                if idx >= 0:
-                    massaged_line = massaged_line[ : idx + 1]
-
-                # skip over multi-line comments about big o stuff, they all look like //add:o(logn)
-                if ':' not in massaged_line: #tried ':o(' but that assumes answers
-                    if self.args.verbose:
-                        print massaged_line
-                    continue
-
-                if massaged_line != expected_values[nchecked].lower():
-                    print "Expected %s but got %s" % (expected_values[nchecked], massaged_line)
-                    total_wrong += 1
-                nchecked += 1
-        else:
-            self.ui.notify("Only checked %d in the Big-O section! Will penalize %s for that if you continue." % (nchecked, self.grade_key))
-            total_wrong += nchecks - nchecked
-            
-
-    total_correct = nchecks - total_wrong
-
-    if total_wrong:
-        self.ui.notify("Total correct: %i out of %i" % (total_correct, nchecks))
-    else:
-        self.ui.notify("All %i Big O answers correct!" % nchecks)
-
-    if 'HashMap' in self.name:
-        self.ui.notify("They did%s use trailers. Double-check this line:\n%s" % ('' if usedtrailers else "n't", line if usedtrailers else ""))
-
-    ViewSource(self)
-
-    bigo_correct = self.ui.promptInt("How many did they actually get correct? ", default=total_correct)
-
-    if 'HashMap' in self.name:
-        correct = self.ui.promptBool("Did they use trailers (default = %s)? " % ('yes' if usedtrailers else 'no'),
-                                     default=usedtrailers)
-        if not correct:
-            self.grades['usestrailerlists'] = 'X'
-
-    #self.ui.promptContinue()
-    self.grades[program_dir + 'bigo'] = str(bigo_correct)
+    tests = ParseOutput(self.filename)
+    tests = ParseOutput(self.expected_output_filename)
 
 
 def SubmissionSetup(self):
     self.ui.notifySubmissionSetup(self)
 
     SetMainMenuSignal(self)
-    setsignal()
+    #setsignal()
 
     print 'File upload times:' 
 
