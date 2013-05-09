@@ -80,15 +80,20 @@ class Workspace(AgraderWorkflow):
                 for attr in dir(module):
                     cls = getattr(module, attr)
 
-                    #if self.args.verbose:
-                    #    self.ui.notify('Checking class %s' % attr)
+                    if self.args.verbose:
+                        self.ui.notify('Checking class %s' % attr)
 
                     try:
-                        if issubclass(cls, Assignment) and cls is not Assignment:
+                        #this is a good assignment if it implements Assignment but isn't that base class itself
+                        isassignment = issubclass(cls, Assignment) and cls is not Assignment
+                        print 'mod: %s, attr: %s, sub? %s' % (module, attr, issubclass(cls, Assignment))
+                        if isassignment:
                             assignments.append(cls)
                             if self.args.verbose:
                                 self.ui.notify('Found assignment %s' % cls)
-                    except TypeError:
+                    except TypeError as e:
+                        if self.args.verbose:
+                            self.ui.notify(e)
                         pass
 
                 generator = None
@@ -102,15 +107,16 @@ class Workspace(AgraderWorkflow):
                             self.ui.notify('Found SubmissionGenerator %s' % generator)
 
                     except AttributeError as e:
+                        #no assignment generator
                         if self.args.verbose:
                             self.ui.notify(e)
                         self.ui.notifyError("No submission generator for assignment module %s" % module)
 
-                # add the assignments themselves if no submission generator
-                if not generator and assignments:
-                    for a in assignments:
-                        self.addAssignment(a)
-
+                        if self.args.verbose:
+                            self.ui.notify('adding assignments themselves since no submission generator')
+                        for a in assignments:
+                            self.addAssignment(a)
+                                                    
         if not self.assignments:
             self.ui.notifyError("No assignments found.")
 
