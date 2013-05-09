@@ -69,9 +69,10 @@ def ViewSource(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
     # open all of the ones within the directory that looks like:
     # $ASSIGNMENT_ROOT/submissions/ucinetid/
-    for (dirpath, dirnames, filenames) in os.walk(os.path.join(self.args.assignment_dir), 'submissions', self.name):
+    source_dir = os.path.join(self.args.assignment_dir, 'submissions', self.name)
+    for (dirpath, dirnames, filenames) in os.walk(source_dir):
         for f in filenames:
-            os.system('less ' + filename)
+            os.system('less ' + f)
     penalty = self.ui.promptInt("Did they lose any points for source code? ", default=0)
     self.grades['source_code'] = self.source_code_points - penalty
 
@@ -121,8 +122,29 @@ def GradeOutput(self):
     '''
     program_dir = os.path.split(os.path.split(self.filename)[0])[-1]
 
+    #parse tests into nested lists
     tests = ParseOutput(self.filename)
-    tests = ParseOutput(self.expected_output_filename)
+    expected_tests = ParseOutput(self.expected_output_filename)
+
+    #configure scoring
+    total_score = 0
+    score_per_test = 100/len(expected_tests)
+
+    #go through each test that was run one by one
+    #they're a pair at a time since one is the expected output and one is the student's submission
+    for test, exp_test in zip(tests, expected_tests):
+        if test != exp_test:
+            # show what was wrong first
+            self.ui.notify("Expected %s but got %s" % (exp_test, test))
+
+            this_grade = self.ui.promptInt("Tests did not match. How much credit should they get? (default = full points = %dpts) " % score_per_test)
+            total_score += this_grade
+        else:
+            #all good!
+            total_score += score_per_test
+             
+    self.grades['output'] = total_score
+    self.ui.promptContinue("Total score: %d" % total_score)
 
 
 def SubmissionSetup(self):
@@ -131,11 +153,10 @@ def SubmissionSetup(self):
     SetMainMenuSignal(self)
     #setsignal()
 
-    print 'File upload times:' 
-
     # Check for submission deadlines and penalty for late work
     deadline_penalty = 0
-    for (dirpath, dirnames, filenames) in os.walk(self.submission_dir):
+    for (dirpath, dirnames, filenames) in os.walk(self.args.submission_dir):
+        #this comprehension 'zips' up the filenames and the time they were submitted (last modified?)
         for f,t in [(os.path.join(dirpath,f),time.localtime(os.path.getmtime(os.path.join(dirpath,f)))) for f in filenames if f.endswith('.java') and not dirpath.endswith('removed')]:
             print '%-60s \t %20s' % (f, time.asctime(t))
 

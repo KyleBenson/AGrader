@@ -48,8 +48,9 @@ def SubmissionGenerator(args):
     Yields the file name of each output submission file if it wasn't already graded.
     '''
     temp_filename = os.path.join(args.assignment_dir, '.temp_output_file')
+    submission_dir = join(args.assignment_dir, 'submissions')
 
-    for username in sorted(listdir(join(args.assignment_dir, 'submissions'))):
+    for username in sorted(listdir(submission_dir)):
         submission = join(args.assignment_dir, 'submissions', username)
         # skip if already graded, unless we are regrading
         if submission.endswith('.graded') and not args.regrade:
@@ -61,6 +62,7 @@ def SubmissionGenerator(args):
 
         sub = MyAssignment(submission, args)
         sub.temp_filename = temp_filename
+        sub.submission_dir = submission_dir
         yield sub
 
     #finalCleanup
@@ -79,6 +81,7 @@ def TestGenerator():
     for sub in SubmissionGenerator(args):
         print sub.name
 
+test_submission = 'tcathers'
 def TestParseOutput():
     from AGrader.examples.cs143b import cs143b_callbacks
     tests = cs143b_callbacks.ParseOutput('expected_output.txt')
@@ -86,17 +89,25 @@ def TestParseOutput():
     print 'total of %d tests:\n%s' % (len(tests), tests)
     print
 
-    tests2 = cs143b_callbacks.ParseOutput('submissions/tcathers')
+    tests2 = cs143b_callbacks.ParseOutput('submissions/' + test_submission)
     print 'actual output:'
     print 'total of %d tests:\n%s' % (len(tests2), tests2)
     print
     print 'are they equal? %d' % (tests == tests2)
 
 def TestGradeOutput():
-    pass
+    #create blank object
+    from AGrader.examples.cs143b import cs143b_callbacks
+    assignment = lambda:0
+    assignment.filename = 'submissions/tcathers'
+    assignment.expected_output_filename = 'expected_output.txt'
+    assignment.grades = {}
+    assignment.ui = AGrader.Workspace.Workspace.GetWorkspace().ui
+
+    cs143b_callbacks.GradeOutput(assignment)
 
 def Test():
-    #TestGenerator()
+    TestGenerator()
     TestParseOutput()
     TestGradeOutput()
 
