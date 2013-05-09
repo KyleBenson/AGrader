@@ -9,6 +9,7 @@ class AgraderWorkflow(object):
     def __init__(self):
         pass
 
+    #note that callbacks are appended(added) like a list
     def addCallback(self, name, callback):
         RegisterCallback(self, name, callback)
 
