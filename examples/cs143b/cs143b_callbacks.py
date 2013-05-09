@@ -1,4 +1,5 @@
 import os.path, signal, shutil, sys, time, re
+from datetime import timedelta, datetime
 
 ########## Callbacks #########
 
@@ -39,13 +40,12 @@ def SetMainMenuSignal(self):
     signal.signal(signal.SIGINT, __menu_signal_handler)
 
 def CorrectGrades(self):
-    # I put an 'a', 'b', etc. appended to the names for the programs they did
-    program_dir = os.path.split(os.path.split(self.filename)[0])[-1]
-
+    '''
+    Prompts the user to correct the grades.
+    '''
     # filter out only the keys for this part
     # we hack on a '1) ' for each option since we request the index for changing them
-    grades = {k:v for k,v in self.grades.items() if k.startswith(program_dir)}
-    grades = {(str(i) + ') ' + k):v for i,(k,v) in enumerate(grades.items())}
+    grades = {(str(i) + ') ' + k):v for i,(k,v) in enumerate(self.grades.items())}
 
     while True:
         self.ui.ShowGrades(grades)
@@ -69,12 +69,37 @@ def ViewSource(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
     # open all of the ones within the directory that looks like:
     # $ASSIGNMENT_ROOT/submissions/ucinetid/
-    source_dir = os.path.join(self.args.assignment_dir, 'submissions', self.name)
-    for (dirpath, dirnames, filenames) in os.walk(source_dir):
+    if self.args.verbose:
+        self.ui.notify('Viewing source files in directory: %s' % self.source_dir)
+
+    deadline_penalty = 0
+    for (dirpath, dirnames, filenames) in os.walk(self.source_dir):
+        #this comprehension 'zips' up the filenames and the time they were submitted (last modified?)
+        for f,t in [(os.path.join(dirpath,f),time.localtime(os.path.getmtime(os.path.join(dirpath,f)))) for f in filenames if f.endswith('.java') and not dirpath.endswith('removed')]:
+            print '%-60s \t %20s' % (f, time.asctime(t))
+            t = datetime.fromtimestamp(time.mktime(t))
+            deadline = datetime.fromtimestamp(time.mktime(self.submission_deadline))
+
+            if t > (deadline + self.grace_period):
+                #need to convert the time.struct_time objects into datetime ones
+                #we add 1 to days_late since it will be 1 day later than the total # of WHOLE days late, i.e. take the ceiling!
+                days_late = (t - deadline).days + 1
+                this_deadline_penalty = days_late * 5
+
+                #take the max of all penalties
+                #only save this if the penalty is more than the previous
+                if this_deadline_penalty > deadline_penalty:
+                    deadline_penalty = this_deadline_penalty
+                self.ui.notify('Assignment turned in %i days past deadline: -%i points!' % (days_late, deadline_penalty))
+
         for f in filenames:
-            os.system('less ' + f)
+            os.system('less ' + os.path.join(dirpath, f))
+
+    # record deadline_penalty
+    self.grades['deadlinepenalty'] = deadline_penalty
+
     penalty = self.ui.promptInt("Did they lose any points for source code? ", default=0)
-    self.grades['source_code'] = self.source_code_points - penalty
+    self.grades['sourcecode'] = self.source_code_points - penalty
 
 def ParseOutput(fname):
     tests = []
@@ -87,9 +112,9 @@ def ParseOutput(fname):
         # add each line to the current test
         #    after massaging the line (removing newlines, lowercasing everything, etc.)
         for line in f.readlines():
-            #remove all whitespace and lowercase
+            #remove all whitespace and lowercase, as well as periods
             #also remove the phrase 'is running' since the expected tests don't have it
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','')
+            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','')
 
             #ignore the 'process terminated' message that some people put at the end.
             if 'terminated' in line:
@@ -120,10 +145,8 @@ def GradeOutput(self):
     We first parse each file into the individual tests since they are all in one file and each test is worth the same amount.
     Then compare each test one by one, prompting grader if they differ.
     '''
-    program_dir = os.path.split(os.path.split(self.filename)[0])[-1]
-
     #parse tests into nested lists
-    tests = ParseOutput(self.filename)
+    tests = ParseOutput(self.submission)
     expected_tests = ParseOutput(self.expected_output_filename)
 
     #configure scoring
@@ -153,22 +176,6 @@ def SubmissionSetup(self):
     SetMainMenuSignal(self)
     #setsignal()
 
-    # Check for submission deadlines and penalty for late work
-    deadline_penalty = 0
-    for (dirpath, dirnames, filenames) in os.walk(self.args.submission_dir):
-        #this comprehension 'zips' up the filenames and the time they were submitted (last modified?)
-        for f,t in [(os.path.join(dirpath,f),time.localtime(os.path.getmtime(os.path.join(dirpath,f)))) for f in filenames if f.endswith('.java') and not dirpath.endswith('removed')]:
-            print '%-60s \t %20s' % (f, time.asctime(t))
-
-            if t > self.submission_deadline:
-                days_late = t - self.submission_deadline.days
-                deadline_penalty = days_late * 5
-                self.ui.notify('Assignment turned in %i days past deadline: -%i points!' % (days_late, deadline_penalty))
-                
-                break
-    # record deadline_penalty
-    self.grades['deadline_penalty'] = deadline_penalty
-
 def clearFiles(self):
     try:
         os.remove (self.graded_file)
@@ -180,7 +187,9 @@ def SubmissionCleanup(self):
 
     if self.args.verbose:
         print self.grades
-    self.gradebook.submitGrades(self.grades, self.grade_key)
+
+    if self.gradebook:
+        self.gradebook.submitGrades(self.grades, self.grade_key)
 
     self.ui.notifySubmissionCleanup(self)
 

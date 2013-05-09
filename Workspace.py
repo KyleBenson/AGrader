@@ -25,8 +25,12 @@ class Workspace(AgraderWorkflow):
         from UI.AgraderCLUI import AgraderCLUI
         workspace.ui = AgraderCLUI(args)
 
-        from Gradebook.Gdata import GdataSpreadsheet
-        workspace.gradebook = GdataSpreadsheet(workspace.ui, args)
+        #Gdata is the default gradebook spreadsheet
+        if args is None or args.gradebook == 'Gdata':
+            from Gradebook.Gdata import GdataSpreadsheet
+            workspace.gradebook = GdataSpreadsheet(workspace.ui, args)
+        elif args is not None and args.gradebook != 'none':
+            self.ui.notifyError('Unrecognized gradebook %s. Abort?' % args.gradebook)
         
         if not Workspace.__currentWorkspace:
             Workspace.__currentWorkspace = workspace
@@ -136,7 +140,7 @@ class Workspace(AgraderWorkflow):
 
     def getGrades(self, key):
         '''
-        Returns the gradebook associated with the given key.
+        Returns the gradebook associated with the given key. None if the gradebook isn't connected.
         '''
         if self.gradebook:
             return self.gradebook.getGrades(key)

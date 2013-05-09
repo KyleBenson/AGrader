@@ -83,6 +83,8 @@ def ParseArgs(args):
                         help='''Key used to access/submit grades for an individual submission''')
     parser.add_argument('--assignment_key', action='store', default=DEFAULT_ASSIGNMENT_KEY,
                         help='''Key used to access/submit grades for a whole assignment''')
+    parser.add_argument('--gradebook', action='store', default='Gdata',
+                        help='''Which Gradebook connector will be used (default=%(default)s).  Specifying 'none' will turn off that feature.''')
 
     # Control grading flow
     parser.add_argument('--submissions', nargs='+',

@@ -6,21 +6,27 @@ from copy import deepcopy, copy
 import os.path
 import sys
 import time
+from datetime import timedelta
 
 # SET USER INTERFACES
 # choose which user interface and gradebook connector you want to use
 # make sure to use the 'as' keyword so Agrader can reference it properly
-import AGrader
+sys.path.append('~/repos/AGrader')
+#from AGrader.Assignment import Assignment
+#from AGrader.Workspace import Workspace
+from Assignment import Assignment
+from Workspace import Workspace
 
-class MyAssignment(AGrader.Assignment.Assignment):
+class MyAssignment(Assignment):
     
     def __init__(self, submission, args):
         super(MyAssignment, self).__init__()
 
         # get workspace from package
-        workspace = AGrader.Workspace.Workspace.GetWorkspace()
+        workspace = Workspace.GetWorkspace()
 
-        self.submission_deadline = time.strptime('Tue Apr 23 04:00:00 2013')
+        self.submission_deadline = time.strptime('Tue Apr 23 00:00:00 2013')
+        self.grace_period = timedelta(hours=4)
         
         self.args = args
         self.submission = submission
@@ -30,16 +36,28 @@ class MyAssignment(AGrader.Assignment.Assignment):
         self.grade_key = username
         self.name = username
 
-        self.grades = workspace.getGrades(self.grade_key)
         self.gradebook = workspace.gradebook
         self.ui = workspace.ui
+
+        #experiment: instead of getting the grades from gradebook at start, wait until end!
+        #doesn't work since getGrades builds the index
+        #self.grades = {}
+        #TODO: fix that...
+        if self.gradebook:
+            self.grades = self.gradebook.getGrades(self.grade_key)
+        else:
+            self.grades = {}
+
+        #source code info
+        self.source_code_points = 10
+        self.source_dir = os.path.join(args.assignment_dir, 'sources', username)
 
         # Callbacks
         # import example callbacks for this class
         from AGrader.examples.cs143b import cs143b_callbacks
 
         self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
-        #self.addCallback('grade', GradeOutput)
+        self.addCallback('grade', cs143b_callbacks.GradeOutput)
         self.addCallback('grade', cs143b_callbacks.ViewSource)
         self.addCallback('cleanup', cs143b_callbacks.SubmissionCleanup)
 
