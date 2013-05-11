@@ -140,8 +140,11 @@ class Workspace(AgraderWorkflow):
 
     def getGrades(self, key):
         '''
-        Returns the gradebook associated with the given key. None if the gradebook isn't connected.
+        Returns the gradebook associated with the given key. An empty one if the gradebook isn't connected.
         '''
         if self.gradebook:
             return self.gradebook.getGrades(key)
-        return None
+        
+        if self.args.gradebook != 'none':
+            self.ui.notifyError('No gradebook connected! Abort? ')
+        return {} #blank gradebook if they want to continue

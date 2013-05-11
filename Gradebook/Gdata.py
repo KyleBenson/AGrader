@@ -98,6 +98,8 @@ class GdataSpreadsheet(BaseGradebook, Thread):
             self.ui.notifyError("Problem submitting grades for %s: %s\n%s" % (key, grades, e))
 
     def getGrades(self, key):
+        '''Returns the gradebook row associated with the given student/group key.
+        None if no valid key found.'''
         ###  TODO: build map once of key->index entries
         self.join()
 
