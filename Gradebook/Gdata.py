@@ -84,6 +84,15 @@ class GdataSpreadsheet(BaseGradebook, Thread):
     def submitGrades(self, grades, key):
         try:
             self.join()
+
+            # make sure each 'cell' submitted is a string
+            try:
+                grades = {k:str(v) for k,v in grades.iteritems()}
+            except Error as e:
+                if self.args.verbose:
+                    self.ui.notifyError(e)
+                self.ui.notifyError("Couldn't convert submitted grade to a string for some reason. Gradebook.Gdata.submitGrades") 
+
             self.gd_client.UpdateRow(self.gdoc_feed.entry[self.rowIndexMap[key]],grades)
         except AttributeError as e:
             self.ui.notifyError("Problem submitting grades for %s: %s\n%s" % (key, grades, e))
