@@ -93,13 +93,13 @@ def ViewSource(self, prompt=True):
                 self.ui.notify('Assignment turned in %i days past deadline: -%i points!' % (days_late, deadline_penalty))
 
         for f in filenames:
-            os.system('less ' + os.path.join(dirpath, f))
+            os.system("less '%s'" % os.path.join(dirpath, f))
 
     # record deadline_penalty
     self.grades['deadlinepenalty'] = deadline_penalty
 
     penalty = self.ui.promptInt("Did they lose any points for source code? ", default=0)
-    self.grades['sourcecode'] = self.source_code_points - penalty
+    self.grades['sourcecode'] = self.possible_points['source_code'] - penalty
 
 def ParseOutput(fname):
     tests = []
@@ -111,10 +111,20 @@ def ParseOutput(fname):
     with open(fname) as f:
         # add each line to the current test
         #    after massaging the line (removing newlines, lowercasing everything, etc.)
-        for line in f.readlines():
+        file_lines = f.readlines()
+        
+        # go through once to see if they use 'init'
+        uses_inits = False
+
+        for line in file_lines:
+            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','')
+            if 'init' in line:
+                uses_inits = True
+
+        for line in file_lines:
             #remove all whitespace and lowercase, as well as periods
             #also remove the phrase 'is running' since the expected tests don't have it
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','')
+            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','')
 
             #ignore the 'process terminated' message that some people put at the end.
             if 'terminated' in line:
@@ -122,22 +132,57 @@ def ParseOutput(fname):
 
             # increment the test # when we reach the end of one
             # but only if we were previously inside a test (or at the very beginning) so as to avoid adding extra tests that aren't really there
+            # this is the start of a new test
             if 'init' in line and inside_test:
                 tests.append([])
                 inside_test = False
+            # if they didn't use the 'init' output, let's assume they at least gave us a newline...
+            elif not uses_inits and line == '' and inside_test:
+                tests.append([])
+                inside_test = False
             # ignore newlines
-            elif line == '\n':
+            elif not line:
                 continue
             # this is a line inside the test
             elif 'init' not in line:
                 inside_test = True
+            else:
+                continue
 
             # add this line to the last test
             if inside_test:
+                if not len(tests):
+                    print "No subtest was ever added to list of tests!"
+                    tests.append([])
                 tests[-1].append(line)
 
     return tests
 
+def PrintListDifference(self, expected, actual, max_len=20):
+    '''
+    Prints the difference between two lists.  max_len argument (default = 20) determines space between first and second lists.
+    !!max_len currently unimplemented!!
+    '''
+    self.ui.notify("Expected vv but got vv")
+
+    total_checked = 0
+
+    for exp, act in zip(expected, actual):
+        total_checked += 1
+
+        if exp != act:
+            self.ui.notify('wrong: %s %s' % (exp, act))
+            #self.ui.notify(('%-' + str(max_len) + 's %s') % (exp, act))
+    
+    #check here for lists of unequal length
+    longer_list_len = max(len(expected), len(actual))
+    if longer_list_len > total_checked:
+        longer_list = expected if len(expected) == longer_list_len else actual
+        
+        #print the remaining lines
+        for val in longer_list[total_checked:]:
+            self.ui.notify('unexpected value in %s: ' % ('expected' if longer_list is expected else 'actual') + str(val))
+        
 
 def GradeOutput(self):
     '''
@@ -151,23 +196,26 @@ def GradeOutput(self):
 
     #configure scoring
     total_score = 0
-    score_per_test = 100/len(expected_tests)
+    score_per_test = self.possible_points['output']/len(expected_tests)
 
     #go through each test that was run one by one
     #they're a pair at a time since one is the expected output and one is the student's submission
+
+    tests_done = 0
     for test, exp_test in zip(tests, expected_tests):
         if test != exp_test:
             # show what was wrong first
-            self.ui.notify("Expected %s but got %s" % (exp_test, test))
+            PrintListDifference(self, exp_test, test)
 
-            this_grade = self.ui.promptInt("Tests did not match. How much credit should they get? (default = full points = %dpts) " % score_per_test)
+            this_grade = self.ui.promptInt("Test %d did not match. How much credit should they get? (default = full points = %dpts) " % (tests_done, score_per_test))
             total_score += this_grade
         else:
             #all good!
             total_score += score_per_test
+        tests_done += 1
              
     self.grades['output'] = total_score
-    self.ui.promptContinue("Total score: %d" % total_score)
+    self.ui.promptContinue("Output graded. Total score(%d possible): %d" % (self.possible_points['output'], total_score))
 
 
 def SubmissionSetup(self):
@@ -194,5 +242,13 @@ def SubmissionCleanup(self):
     self.ui.notifySubmissionCleanup(self)
 
     #save that we already graded this one
-    if self.ui.promptBool("set file as graded?", default=False):
-        os.rename(self.submission, os.path.join(self.submission, '.graded'))
+    if self.ui.promptBool("set file as graded?", default=True):
+        name_after_grading = self.submission + '.graded'
+
+        if not os.path.exists(self.submission):
+            self.ui.notifyError("Couldn't find file to rename!")
+
+        os.rename(self.submission, name_after_grading)
+
+        if not os.path.exists(name_after_grading):
+            self.ui.notifyError("Couldn't find renamed file!")

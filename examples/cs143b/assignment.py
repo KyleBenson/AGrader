@@ -27,7 +27,7 @@ class MyAssignment(Assignment):
 
         self.submission_deadline = time.strptime('Tue Apr 23 00:00:00 2013')
         self.grace_period = timedelta(hours=4)
-        
+
         self.args = args
         self.submission = submission
         self.expected_output_filename = 'expected_output.txt'
@@ -48,8 +48,17 @@ class MyAssignment(Assignment):
         else:
             self.grades = {}
 
+        # if returned grades are None, this submission isn't present in the roster
+        if self.grades is None:
+            self.ui.notify("Student %s not found in roster, skipping!" % username)
+            return
+
+        # store possible points for each part of the assignment here
+        self.possible_points = {}
+        
         #source code info
-        self.source_code_points = 10
+        self.possible_points['source_code'] = 10
+        self.possible_points['output'] = 90
         self.source_dir = os.path.join(args.assignment_dir, 'sources', username)
 
         # Callbacks
