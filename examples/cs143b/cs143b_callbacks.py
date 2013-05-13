@@ -8,7 +8,7 @@ def SetMainMenuSignal(self):
     def __menu_signal_handler(sig, frame):
         # Rebind SIGINT to kill now
         def __exit_signal_handler(sig, frame):
-            print 'Goodbye!'
+            self.ui.notify('Goodbye!')
             sys.exit(0)
         signal.signal(signal.SIGINT, __exit_signal_handler)
 
@@ -18,7 +18,7 @@ def SetMainMenuSignal(self):
                    'Run']
 
         while True:
-            command = ''#instance.ui.promptList(options, default=options[0])
+            command = instance.ui.promptList(options, default=options[0])
 
             if command == 'Quit':
                 exit(0)
@@ -98,7 +98,7 @@ def ViewSource(self, prompt=True):
     # record deadline_penalty
     self.grades['deadlinepenalty'] = deadline_penalty
 
-    penalty = self.ui.promptInt("Did they lose any points for source code? ", default=0)
+    penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)
     self.grades['sourcecode'] = self.possible_points['source_code'] - penalty
 
 def ParseOutput(fname):
@@ -117,17 +117,17 @@ def ParseOutput(fname):
         uses_inits = False
 
         for line in file_lines:
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','')
+            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
             if 'init' in line:
                 uses_inits = True
 
         for line in file_lines:
             #remove all whitespace and lowercase, as well as periods
             #also remove the phrase 'is running' since the expected tests don't have it
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','')
+            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
 
-            #ignore the 'process terminated' message that some people put at the end.
-            if 'terminated' in line:
+            #ignore the 'process terminated' message that some people put at the end.  someone misspelled terminated so I truncated it...
+            if 'term' in line:
                 continue
 
             # increment the test # when we reach the end of one
@@ -161,17 +161,19 @@ def ParseOutput(fname):
 def PrintListDifference(self, expected, actual, max_len=20):
     '''
     Prints the difference between two lists.  max_len argument (default = 20) determines space between first and second lists.
+    Returns a number representing how different they are (currently the # lines that differ).  
     !!max_len currently unimplemented!!
     '''
     self.ui.notify("Expected vv but got vv")
 
-    total_checked = 0
+    total_checked = total_wrong = 0
 
     for exp, act in zip(expected, actual):
         total_checked += 1
 
         if exp != act:
             self.ui.notify('wrong: %s %s' % (exp, act))
+            total_wrong += 1
             #self.ui.notify(('%-' + str(max_len) + 's %s') % (exp, act))
     
     #check here for lists of unequal length
@@ -182,7 +184,9 @@ def PrintListDifference(self, expected, actual, max_len=20):
         #print the remaining lines
         for val in longer_list[total_checked:]:
             self.ui.notify('unexpected value in %s: ' % ('expected' if longer_list is expected else 'actual') + str(val))
+            total_wrong += 1
         
+    return total_wrong
 
 def GradeOutput(self):
     '''
@@ -205,9 +209,10 @@ def GradeOutput(self):
     for test, exp_test in zip(tests, expected_tests):
         if test != exp_test:
             # show what was wrong first
-            PrintListDifference(self, exp_test, test)
-
-            this_grade = self.ui.promptInt("Test %d did not match. How much credit should they get? (default = full points = %dpts) " % (tests_done, score_per_test))
+            # by default, and for non-interactive grading, we subtract one point for each line wrong, to a minimum of 0
+            default_points = max(0, score_per_test - PrintListDifference(self, exp_test, test))
+            
+            this_grade = self.ui.promptInt("Test %d did not match. How much credit should they get? (default = %spts) " % (tests_done, str(default_points)), default=default_points)
             total_score += this_grade
         else:
             #all good!

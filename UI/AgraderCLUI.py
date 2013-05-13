@@ -17,7 +17,8 @@ class AgraderCLUI(CLUI, AgraderBaseUI):
         print msg
 
     def notify(self, msg):
-        print msg
+        if self.isInteractive():
+            self.RawOutput(msg)
     
     def notifyError(self, msg):
         self.notify(msg)
@@ -26,32 +27,32 @@ class AgraderCLUI(CLUI, AgraderBaseUI):
 
     def notifyProblemSetup(self, assignment):
         #TODO: print in 2nd line
-        print '############################################################'
-        print '$$$$$$$$$$$$$$$$$$     PROBLEM      $$$$$$$$$$$$$$$$$$$$$$$$\n'
+        self.notify('############################################################')
+        self.notify('$$$$$$$$$$$$$$$$$$     PROBLEM      $$$$$$$$$$$$$$$$$$$$$$$$\n')
 
         try:
-            print assignment.name
+            self.notify(assignment.name)
         except AttributeError:
-            print "Next Problem"
+            self.notify("Next Problem")
         
-        print '\n\n'    
+        self.notify('\n\n')
         
     def notifyProblemCleanup(self, assignment):
-        #print '\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
-        print '###########################################################\n\n'
+        #self.notify('\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        self.notify('###########################################################\n\n')
     
     def notifySubmissionSetup(self, submission):
-        print '############################################################'
-        print '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
-        print '$$$$$$$$$$$$$$$$$     SUBMISSION      $$$$$$$$$$$$$$$$$$$$$$\n'
+        self.notify('############################################################')
+        self.notify('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+        self.notify('$$$$$$$$$$$$$$$$$     SUBMISSION      $$$$$$$$$$$$$$$$$$$$$$\n')
         
         try:
-            print 'By %s' % submission.name
+            self.notify('By %s' % submission.name)
         except AttributeError:
-            print 'By unknown submitter.'
-        print
-    
+            self.notify('By unknown submitter.')
+        self.notify('') #newline
+
     def notifySubmissionCleanup(self, submission):
-        print '$$$$$$$$$$$$$$$     END SUBMISSION      $$$$$$$$$$$$$$$$$$$$'
-        print '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
-        print '############################################################\n\n\n'
+        self.notify('$$$$$$$$$$$$$$$     END SUBMISSION      $$$$$$$$$$$$$$$$$$$$')
+        self.notify('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+        self.notify('############################################################\n\n\n')

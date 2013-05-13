@@ -8,29 +8,49 @@ from os import listdir
 from sys import path
 
 class Workspace(AgraderWorkflow):
+    '''
+    Singleton controller class.
+    '''
 
     def __init__(self, args):
         #super(Workspace, self).__init__()
-        self.ui = None
-        self.gradebook = None
         self.assignments = []
         self.args = args
 
+        # set the UI
+        # do this first so that importing other functions can interact with the user
+        self.ui = None
+        try:
+            # handle the user setting a non-interactive session
+            if args.ui in ['none', 'off']:
+                args.interactive = False
+        except AttributeError:
+            pass
+        finally:
+            # hard-coded default
+            if self.ui is None:
+                from UI.AgraderCLUI import AgraderCLUI
+                self.ui = AgraderCLUI(args)
+
+            if not args.interactive:
+                self.ui.setInteractive(False)
+
+        # set the Gradebook
+        #Gdata is the default gradebook spreadsheet
+        self.gradebook = None
+        if args is None or args.gradebook.lower() == 'gdata':
+            from Gradebook.Gdata import GdataSpreadsheet
+            self.gradebook = GdataSpreadsheet(self.ui, args)
+        elif args is not None and args.gradebook != 'none':
+            self.ui.notifyError('Unrecognized gradebook %s. Abort?' % args.gradebook)
 
     __currentWorkspace = None
     @staticmethod
     def GetDefault(args=None):
+        '''
+        Create a default Workspace instance given the possibly specified arguments.  Will cache this instance.
+        '''
         workspace = Workspace(args)
-
-        from UI.AgraderCLUI import AgraderCLUI
-        workspace.ui = AgraderCLUI(args)
-
-        #Gdata is the default gradebook spreadsheet
-        if args is None or args.gradebook == 'Gdata':
-            from Gradebook.Gdata import GdataSpreadsheet
-            workspace.gradebook = GdataSpreadsheet(workspace.ui, args)
-        elif args is not None and args.gradebook != 'none':
-            self.ui.notifyError('Unrecognized gradebook %s. Abort?' % args.gradebook)
         
         if not Workspace.__currentWorkspace:
             Workspace.__currentWorkspace = workspace
@@ -90,7 +110,7 @@ class Workspace(AgraderWorkflow):
                     try:
                         #this is a good assignment if it implements Assignment but isn't that base class itself
                         isassignment = issubclass(cls, Assignment) and cls is not Assignment
-                        print 'mod: %s, attr: %s, sub? %s' % (module, attr, issubclass(cls, Assignment))
+
                         if isassignment:
                             assignments.append(cls)
                             if self.args.verbose:

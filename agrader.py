@@ -94,6 +94,10 @@ def ParseArgs(args):
     parser.add_argument('--regrade', action='store_true',
                         help='''Force regrading of submissions''')
 
+    # Control UI
+    parser.add_argument('-ui', metavar='interactive', action='store',
+                        help='''Change the user interface. Current options are: default(clui), clui, echo, none(echo), off(none)''')
+    
     # User preferences
     parser.add_argument('--username', action='store', default=DEFAULT_USERNAME,
                         help='''Username for logging into Gradebook, retrieving submissions, etc.''')
@@ -108,7 +112,11 @@ def ParseArgs(args):
     parser.add_argument('--config_file', default=DEFAULT_CONFIG_FILE,
                         help='''User's configuration file (default = %(default)s''')
 
-    return parser.parse_args(args)
+    return_args = parser.parse_args(args)
+    
+    # set some hard values
+    return_args.interactive = True
+    return return_args
 
 
 ################################### MAIN ###################################

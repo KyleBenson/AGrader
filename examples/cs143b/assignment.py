@@ -57,8 +57,8 @@ class MyAssignment(Assignment):
         self.possible_points = {}
         
         #source code info
-        self.possible_points['source_code'] = 10
-        self.possible_points['output'] = 90
+        self.possible_points['source_code'] = 2.5
+        self.possible_points['output'] = 100
         self.source_dir = os.path.join(args.assignment_dir, 'sources', username)
 
         # Callbacks
@@ -67,7 +67,7 @@ class MyAssignment(Assignment):
 
         self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
         self.addCallback('grade', cs143b_callbacks.GradeOutput)
-        self.addCallback('grade', cs143b_callbacks.ViewSource)
+        #self.addCallback('grade', cs143b_callbacks.ViewSource)
         self.addCallback('cleanup', cs143b_callbacks.SubmissionCleanup)
 
 def SubmissionGenerator(args):
@@ -80,8 +80,15 @@ def SubmissionGenerator(args):
     for username in sorted(listdir(submission_dir)):
         submission = join(args.assignment_dir, 'submissions', username)
         # skip if already graded, unless we are regrading
-        if submission.endswith('.graded') and not args.regrade:
-            continue
+        if submission.endswith('.graded'):
+            # if we are regrading, put the file back in its ungraded state
+            if args.regrade:
+                new_submission_name = submission.replace('.graded','')
+                os.rename(submission, new_submission_name)
+                submission = new_submission_name
+                username = username.replace('.graded','')
+            else:
+                continue
 
         # If we specified a specific set of submissions, only execute for them,
         if (args.submissions and username not in args.submissions):
