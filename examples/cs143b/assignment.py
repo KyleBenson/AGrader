@@ -31,6 +31,7 @@ class MyAssignment(Assignment):
         self.args = args
         self.submission = submission
         self.expected_output_filename = 'expected_output.txt'
+        #self.expected_output_filename = 'expected_output_groups.txt'
 
         username = os.path.split(submission)[-1].strip().lower()
         self.grade_key = username
@@ -67,7 +68,7 @@ class MyAssignment(Assignment):
 
         self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
         self.addCallback('grade', cs143b_callbacks.GradeOutput)
-        #self.addCallback('grade', cs143b_callbacks.ViewSource)
+        self.addCallback('grade', cs143b_callbacks.ViewSource)
         self.addCallback('cleanup', cs143b_callbacks.SubmissionCleanup)
 
 def SubmissionGenerator(args):

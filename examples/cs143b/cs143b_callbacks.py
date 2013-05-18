@@ -73,10 +73,11 @@ def ViewSource(self, prompt=True):
         self.ui.notify('Viewing source files in directory: %s' % self.source_dir)
 
     deadline_penalty = 0
+    found_source = False #make sure they submitted anything!
     for (dirpath, dirnames, filenames) in os.walk(self.source_dir):
         #this comprehension 'zips' up the filenames and the time they were submitted (last modified?)
-        for f,t in [(os.path.join(dirpath,f),time.localtime(os.path.getmtime(os.path.join(dirpath,f)))) for f in filenames if f.endswith('.java') and not dirpath.endswith('removed')]:
-            print '%-60s \t %20s' % (f, time.asctime(t))
+        for f,t in [(os.path.join(dirpath,f),time.localtime(os.path.getmtime(os.path.join(dirpath,f)))) for f in filenames if not dirpath.endswith('removed')]:
+            found_source = True
             t = datetime.fromtimestamp(time.mktime(t))
             deadline = datetime.fromtimestamp(time.mktime(self.submission_deadline))
 
@@ -98,7 +99,13 @@ def ViewSource(self, prompt=True):
     # record deadline_penalty
     self.grades['deadlinepenalty'] = deadline_penalty
 
-    penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)
+    if not found_source:
+        # let grader specify grade anyway if they found the source somewhere unexpected
+        found_source = not self.ui.promptBool("NO source code found! Is this correct? ", default=True)
+        if not found_source:
+            penalty = self.possible_points['source_code']
+    elif found_source:
+        penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)
     self.grades['sourcecode'] = self.possible_points['source_code'] - penalty
 
 def ParseOutput(fname):
@@ -122,6 +129,11 @@ def ParseOutput(fname):
                 uses_inits = True
 
         for line in file_lines:
+            # hack to make sure only the word error appears in a line
+            # since that's what the students were told they could do
+            if 'error' in line:
+                line = 'error'
+
             #remove all whitespace and lowercase, as well as periods
             #also remove the phrase 'is running' since the expected tests don't have it
             line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
@@ -210,8 +222,13 @@ def GradeOutput(self):
         if test != exp_test:
             # show what was wrong first
             # by default, and for non-interactive grading, we subtract one point for each line wrong, to a minimum of 0
-            default_points = max(0, score_per_test - PrintListDifference(self, exp_test, test))
-            
+            # NOTE the hack for doing groups and changing pts wrong per line wrong
+            points_off = PrintListDifference(self, exp_test, test)
+            if 'group' in self.expected_output_filename:
+                points_off /= 2.0
+
+            default_points = max(0, score_per_test - points_off)
+
             this_grade = self.ui.promptInt("Test %d did not match. How much credit should they get? (default = %spts) " % (tests_done, str(default_points)), default=default_points)
             total_score += this_grade
         else:
