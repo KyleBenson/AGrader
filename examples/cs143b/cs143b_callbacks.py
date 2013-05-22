@@ -104,6 +104,8 @@ def ViewSource(self, prompt=True):
         found_source = not self.ui.promptBool("NO source code found! Is this correct? ", default=True)
         if not found_source:
             penalty = self.possible_points['source_code']
+        else:
+            penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)      
     elif found_source:
         penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)
     self.grades['sourcecode'] = self.possible_points['source_code'] - penalty
@@ -212,8 +214,8 @@ def GradeOutput(self):
 
     #configure scoring
     total_score = 0
-    score_per_test = self.possible_points['output']/len(expected_tests)
-
+    score_per_test = self.possible_points['output']/float(len(expected_tests))
+    
     #go through each test that was run one by one
     #they're a pair at a time since one is the expected output and one is the student's submission
 
