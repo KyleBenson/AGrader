@@ -30,8 +30,8 @@ class MyAssignment(Assignment):
 
         self.args = args
         self.submission = submission
-        #self.expected_output_filename = 'expected_output.txt'
-        self.expected_output_filename = 'expected_output_groups.txt'
+        self.expected_output_filename = 'expected_output.txt'
+        #self.expected_output_filename = 'expected_output_groups.txt'
 
         username = os.path.split(submission)[-1].strip().lower()
         self.grade_key = username

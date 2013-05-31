@@ -122,6 +122,10 @@ def ParseOutput(fname):
         #    after massaging the line (removing newlines, lowercasing everything, etc.)
         file_lines = f.readlines()
         
+        # trim leading newlines
+        while file_lines[0] == '\n':
+            file_lines = file_lines[1:]
+        
         # go through once to see if they use 'init'
         uses_inits = False
 
@@ -129,6 +133,11 @@ def ParseOutput(fname):
             line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
             if 'init' in line:
                 uses_inits = True
+                break
+
+        # hack for filesystem project to ignore the 'init' in 'disk initialized' 
+        uses_inits = False
+        tests.append([]) # have to do this once since no init hint to start new test
 
         for line in file_lines:
             # hack to make sure only the word error appears in a line
@@ -147,7 +156,7 @@ def ParseOutput(fname):
             # increment the test # when we reach the end of one
             # but only if we were previously inside a test (or at the very beginning) so as to avoid adding extra tests that aren't really there
             # this is the start of a new test
-            if 'init' in line and inside_test:
+            if uses_inits and 'init' in line and inside_test:
                 tests.append([])
                 inside_test = False
             # if they didn't use the 'init' output, let's assume they at least gave us a newline...
