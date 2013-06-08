@@ -101,7 +101,7 @@ def ParseArgs(args):
     # User preferences
     parser.add_argument('--username', action='store', default=DEFAULT_USERNAME,
                         help='''Username for logging into Gradebook, retrieving submissions, etc.''')
-    parser.add_argument('--passwd', action='store', 
+    parser.add_argument('--passwd', action='store', default=None,
                         help='''Password for logging into Gradebook, retrieving submissions, etc.''')
     parser.add_argument('--verbose', action='store_true', 
                         help='''Verbosely print logging / debugging information during execution''')

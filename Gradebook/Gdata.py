@@ -5,6 +5,10 @@
 from BaseGradebook import BaseGradebook
 from threading import Thread
 
+# defaults that don't really do anything, just serve as flags to show the values are unset
+DEFAULT_USERNAME='some_user@gmail.com'
+DEFAULT_SPREADSHEET='grades_sheet'
+
 class GdataSpreadsheet(BaseGradebook, Thread):
     '''Provides interaction with Google docs spreadsheets as an external gradebook service.'''
 
@@ -20,14 +24,15 @@ class GdataSpreadsheet(BaseGradebook, Thread):
             self.primaryKey = args.submission_key
             self.spreadsheetName = args.assignment_key
             self.username = args.username
+            self.password = args.passwd
         else:
             #make some args
             self.args = lambda:0
             self.args.verbose = True
 
             self.primaryKey = 'ucinetid'
-            self.spreadsheetName = 'CS143B-Project1-grades'
-            self.username = 'kebenson@uci.edu'
+            self.spreadsheetName = DEFAULT_SPREADSHEET
+            self.username = DEFAULT_USERNAME
 
         self.promptLoginInfo()
 
@@ -37,9 +42,14 @@ class GdataSpreadsheet(BaseGradebook, Thread):
         self.start()
 
     def promptLoginInfo(self):
-        self.username = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username,
-                                          default=self.username)
-        self.password = self.ui.promptPassword('Enter password for ' + self.username + ': ')
+        '''
+        Only prompt if it hasn't been explicitly specified.
+        '''
+        if self.username == DEFAULT_USERNAME:
+            self.username = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username,
+                                              default=self.username)
+        if self.args.passwd is None:
+            self.password = self.ui.promptPassword('Enter password for ' + self.username + ': ', default='')
 
     def run(self):
         '''Logs into Gdocs and gets the specified worksheet etc.'''
