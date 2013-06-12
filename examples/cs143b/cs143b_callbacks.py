@@ -1,4 +1,4 @@
-import os.path, signal, shutil, sys, time, re
+import os.path, signal, shutil, sys, time, re, string
 from datetime import timedelta, datetime
 
 ########## Callbacks #########
@@ -135,10 +135,6 @@ def ParseOutput(fname):
                 uses_inits = True
                 break
 
-        # hack for filesystem project to ignore the 'init' in 'disk initialized' 
-        uses_inits = False
-        tests.append([]) # have to do this once since no init hint to start new test
-
         for line in file_lines:
             # hack to make sure only the word error appears in a line
             # since that's what the students were told they could do
@@ -192,12 +188,11 @@ def PrintListDifference(self, expected, actual, max_len=20):
     total_checked = total_wrong = 0
 
     for exp, act in zip(expected, actual):
-        total_checked += 1
-
         if exp != act:
-            self.ui.notify('wrong: %s %s' % (exp, act))
+            self.ui.notify('line %d wrong: %s %s' % (total_checked, exp, act))
             total_wrong += 1
             #self.ui.notify(('%-' + str(max_len) + 's %s') % (exp, act))
+        total_checked += 1
     
     #check here for lists of unequal length
     longer_list_len = max(len(expected), len(actual))
@@ -211,7 +206,7 @@ def PrintListDifference(self, expected, actual, max_len=20):
         
     return total_wrong
 
-def GradeOutput(self):
+def GradeMultiTestOutput(self):
     '''
     Here we just compare the output of two different programs, one is expected to be completely correct.
     We first parse each file into the individual tests since they are all in one file and each test is worth the same amount.
@@ -249,6 +244,96 @@ def GradeOutput(self):
              
     self.grades['output'] = total_score
     self.ui.promptContinue("Output graded. Total score(%d possible): %d" % (self.possible_points['output'], total_score))
+
+
+def FilesystemProjectMassageOutput(fname):
+    '''
+    Modify the output in the given file to make it match the expected output.
+    Lower-case everything, remove commas, etc.
+    '''
+    massaged_lines = []
+        
+    with open(fname) as f:
+        file_lines = f.readlines()
+        
+        # trim leading newlines
+        while file_lines[0] == '\n':
+            file_lines = file_lines[1:]
+
+        # now massage the lines and remove any empty lines
+        for line in file_lines:
+            # skip newlines
+            if line == '\n':
+                continue
+            
+            else:
+                # so many binary characters, here we strip non-printable ones with a recipe taken from
+                # http://stackoverflow.com/questions/92438/stripping-non-printable-characters-from-a-string-in-python
+                # ignores unicode, apparently, too
+                line = ''.join(filter(lambda x: x in string.printable, line))
+                print line
+
+                line = line.strip().replace('\t','').replace('\n','').lower().replace('.','').replace(',','')#.replace(' ', '')
+
+            # lines not given very explicit output formats should be shortened
+            # do this after massaging in case of character case differences
+            if 'error' in line:
+                line = 'error'
+
+            # some people always said restored, never intialized
+            line = line.replace('restored', 'initialized')
+
+            # some people say '1 bytes read'
+            line = line.replace('byte read', 'bytes read')
+
+            # some people say 'file abc 23, file foo 64', so I just
+            line = line.replace('file', '')
+
+            # some people do 'index = 1'
+            line = line.replace(' = ', '=')
+            
+            # some people do 'bytes read:10'
+            line = line.replace(': ', ':')
+            
+            # typo...
+            line = line.replace('intialized', 'initialized')
+            
+            # someone said this...
+            line = line.replace('disk initiated', 'disk initialized')
+            line = line.replace('deleted', 'destroyed')
+            
+            massaged_lines.append(line)
+
+    return massaged_lines
+
+
+def GradeFilesystemProjectOutput(self):
+    '''
+    Here we just compare the output of two different programs, one is expected to be completely correct.
+    We first parse each file into lines, massaged to match the expected output.
+    Then compare each line, prompting grader if they differ.
+    '''
+    tests = FilesystemProjectMassageOutput(self.submission)
+    expected_tests = FilesystemProjectMassageOutput(self.expected_output_filename)
+
+    #configure score for each line to be equal
+    score_per_test = self.possible_points['output']/float(len(expected_tests))
+    
+    points_off = score_per_test * PrintListDifference(self, expected_tests, tests)
+    default_points = self.possible_points['output'] - points_off
+
+    # prompt for possible corrections if they didn't get 100
+    do_prompt = default_points != self.possible_points['output']
+    if do_prompt:
+        total_score = self.ui.promptInt("Outputs did not match. How much credit should they get? (default = %spts, %spts/line) " % (str(default_points), str(score_per_test)), default=default_points)
+    else:
+        total_score = default_points
+             
+    self.grades['output'] = total_score
+
+    #prompt only if not done already
+    if not do_prompt:
+        self.ui.promptContinue("Output matches! Total score(%d possible): %d" % (self.possible_points['output'], total_score))
 
 
 def SubmissionSetup(self):

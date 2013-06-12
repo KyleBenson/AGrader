@@ -6,8 +6,6 @@ from CLUI import CLUI
 from AgraderBaseUI import AgraderBaseUI
 from getpass import getpass
 
-CRLF = '\r\n'
-
 class AgraderCLUI(CLUI, AgraderBaseUI):
 ##### NOTIFICATIONS ######
     def __init__(self, args):

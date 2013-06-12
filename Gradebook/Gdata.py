@@ -49,7 +49,7 @@ class GdataSpreadsheet(BaseGradebook, Thread):
             self.username = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username,
                                               default=self.username)
         if self.args.passwd is None:
-            self.password = self.ui.promptPassword('Enter password for ' + self.username + ': ', default='')
+            self.password = self.ui.promptPassword('Enter password for ' + self.username + ': ')
 
     def run(self):
         '''Logs into Gdocs and gets the specified worksheet etc.'''

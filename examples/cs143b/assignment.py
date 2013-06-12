@@ -25,12 +25,13 @@ class MyAssignment(Assignment):
         # get workspace from package
         workspace = Workspace.GetWorkspace()
 
-        self.submission_deadline = time.strptime('Tue Apr 23 00:00:00 2013')
+        self.submission_deadline = time.strptime('Fri Jun 7 09:00:00 2013')
         self.grace_period = timedelta(hours=4)
 
         self.args = args
         self.submission = submission
         self.expected_output_filename = 'expected_output.txt'
+        #self.expected_output_filename = 'expected_output_with_error.txt' # there was a bug in input so this ignored it
         #self.expected_output_filename = 'expected_output_groups.txt'
 
         username = os.path.split(submission)[-1].strip().lower()
@@ -67,7 +68,8 @@ class MyAssignment(Assignment):
         from AGrader.examples.cs143b import cs143b_callbacks
 
         self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
-        self.addCallback('grade', cs143b_callbacks.GradeOutput)
+        #self.addCallback('grade', cs143b_callbacks.GradeMultiTestOutputOutput) #process simulator project
+        self.addCallback('grade', cs143b_callbacks.GradeFilesystemProjectOutput)
         self.addCallback('grade', cs143b_callbacks.ViewSource)
         self.addCallback('cleanup', cs143b_callbacks.SubmissionCleanup)
 
