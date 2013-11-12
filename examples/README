@@ -1,0 +1,9 @@
+EXAMPLES
+
+The examples expect the following directories to be present:
+
+ - submissions : contains files named as 'ucinetid.java' that represent submissions from students.  Note that they may be stored in folders named like [a|b|c|d] to represent different portions of each assignment, as created by Checkmate when students submit through it
+
+I didn't include actual example submissions from students for fairly obvious reasons...
+
+
