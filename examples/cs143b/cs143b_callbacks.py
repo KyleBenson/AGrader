@@ -171,7 +171,7 @@ def ParseOutput(fname):
             # add this line to the last test
             if inside_test:
                 if not len(tests):
-                    print "No subtest was ever added to list of tests!"
+                    self.ui.notifyError("No subtest was ever added to list of tests!")
                     tests.append([])
                 tests[-1].append(line)
 
@@ -271,7 +271,6 @@ def FilesystemProjectMassageOutput(fname):
                 # http://stackoverflow.com/questions/92438/stripping-non-printable-characters-from-a-string-in-python
                 # ignores unicode, apparently, too
                 line = ''.join(filter(lambda x: x in string.printable, line))
-                print line
 
                 line = line.strip().replace('\t','').replace('\n','').lower().replace('.','').replace(',','')#.replace(' ', '')
 
