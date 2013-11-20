@@ -139,6 +139,10 @@ def PrintListDifference(self, expected, actual, max_len=20):
         
     return total_wrong
 
+def ReadGradeFromFile(self):
+    with open(self.submission) as f:
+        self.grades['score'] = f.readline()
+
 def CompareFilesByLine(self):
     with open(self.submission) as sub:
         outputs = sub.readlines()
@@ -146,100 +150,6 @@ def CompareFilesByLine(self):
         expecteds = exp.readlines()
 
     self.grades['score'] = len(expecteds) - self.PrintListDifference(outputs, expecteds)
-
-def FixSource(self):
-    os.system('em ' + ' '.join([self.graded_file,
-                                self.run_file]))
-
-def CompileCommand(self):
-    '''Should look like:
-    javac -cp .:deps/collections.jar:deps/introlib.jar:deps/junit-4.7.jar:edu/uci/ics/pattis/ics23/collections/ edu/uci/ics/pattis/ics23/collections/LinkedQueue.java
-    '''
-
-    try:
-        os.remove(self.run_file.replace('.java', '.class'))
-    except:
-        pass
-    compile_command = 'javac -cp %s %s %s' % (self.classpath, #dirpath + classpath_sep +
-                                              self.run_file if os.path.exists(self.run_file) else '',
-                                              self.graded_file if self.graded_file else '')
-
-    try:
-        compile_command += ' ' + self.compiled_files
-    except AttributeError:
-        pass
-
-    if self.args.verbose:
-        print compile_command, '\n'
-        
-    success = False
-    while not success:
-        if os.system(compile_command) != 0:
-            if self.ui.promptBool("Compilation FAILED!!!!  Fix source code?", default=True):
-                FixSource(self)
-            else:
-                success = True
-        else:
-            success = True
-
-def RunCommand(self, input_script=None):
-    '''Should look like:
-    ./a.out
-    '''
-    command = './a.out'
-
-    if input_script:
-        command += ' < ' + input_script
-    
-    if self.args.verbose:
-        print command, '\n'
-
-    success = False
-    while not success:
-        ret = os.system(command)
-        if ret != 0:
-            if self.ui.promptBool("Execution Failed!  Fix source code and recompile/execute?", default=True):
-                FixSource(self)
-                try:
-                    CompileCommand(self)
-                except AttributeError:
-                    if self.args.verbose:
-                        self.ui.notify('no compilation defined')
-            else:
-                success = True
-        else:
-            success = True
-
-    return ret
-
-def GradeFilesystemProjectOutput(self):
-    '''
-    Here we just compare the output of two different programs, one is expected to be completely correct.
-    We first parse each file into lines, massaged to match the expected output.
-    Then compare each line, prompting grader if they differ.
-    '''
-    tests = FilesystemProjectMassageOutput(self.submission)
-    expected_tests = FilesystemProjectMassageOutput(self.expected_output_filename)
-
-    #configure score for each line to be equal
-    score_per_test = self.possible_points['output']/float(len(expected_tests))
-    
-    points_off = score_per_test * PrintListDifference(self, expected_tests, tests)
-    default_points = self.possible_points['output'] - points_off
-
-    # prompt for possible corrections if they didn't get 100
-    do_prompt = default_points != self.possible_points['output']
-    if do_prompt:
-        total_score = self.ui.promptInt("Outputs did not match. How much credit should they get? (default = %spts, %spts/line) " % (str(default_points), str(score_per_test)), default=default_points)
-    else:
-        total_score = default_points
-             
-    self.grades['output'] = total_score
-
-    #prompt only if not done already
-    if not do_prompt:
-        self.ui.promptContinue("Output matches! Total score(%d possible): %d" % (self.possible_points['output'], total_score))
-
 
 def SubmissionSetup(self):
     self.ui.notifySubmissionSetup(self)

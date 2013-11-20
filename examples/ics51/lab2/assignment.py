@@ -61,10 +61,7 @@ class MyAssignment(Assignment):
 
         self.addCallback('setup', ics51_callbacks.SubmissionSetup)
         #self.addCallback('grade', ics51_callbacks.GradeMultiTestOutputOutput) #process simulator project
-        self.addCallback('grade', ics51_callbacks.CompileCommand)
-        self.addCallback('grade', ics51_callbacks.RunCommand)
-        self.addCallback('grade', ics51_callbacks.ViewSource)
-        self.addCallback('grade', ics51_callbacks.CompareFilesByLine)
+        self.addCallback('grade', ics51_callbacks.ReadGradeFromFile)
         self.addCallback('cleanup', ics51_callbacks.SubmissionCleanup)
 
 def SubmissionGenerator(args):
