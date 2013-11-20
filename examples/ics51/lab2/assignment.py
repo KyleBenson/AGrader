@@ -1,4 +1,4 @@
-# ICS 23 Fall 2012 Program 3 agrader config file
+# ICS 51 Fall 2013 Lab 2 agrader config file
 
 from os import listdir, system, getcwd, chdir, getcwd, walk, remove
 from os.path import isdir, join, split, exists, getmtime
@@ -25,7 +25,7 @@ class MyAssignment(Assignment):
         # get workspace from package
         workspace = Workspace.GetWorkspace()
 
-        self.submission_deadline = time.strptime('Fri Jun 7 09:00:00 2013')
+        self.submission_deadline = time.strptime('Tue Nov 20 11:55:00 2013')
         self.grace_period = timedelta(hours=4)
 
         self.args = args
@@ -55,28 +55,16 @@ class MyAssignment(Assignment):
             self.ui.notify("Student %s not found in roster, skipping!" % username)
             return
 
-        # store possible points for each part of the assignment here
-        self.possible_points = {}
-        
-        #source code info
-        self.possible_points['source_code'] = 2.5
-        self.possible_points['output'] = 100
-        self.source_dir = os.path.join(args.assignment_dir, 'sources', username)
-
         # Callbacks
         # import example callbacks for this class
         from AGrader.examples.ics51 import ics51_callbacks
-        from AGrader.examples.ics51 import ics51_callbacks
 
         self.addCallback('setup', ics51_callbacks.SubmissionSetup)
-        self.addCallback('setup', ics51_callbacks.SubmissionSetup)
         #self.addCallback('grade', ics51_callbacks.GradeMultiTestOutputOutput) #process simulator project
-        #self.addCallback('grade', ics51_callbacks.GradeMultiTestOutputOutput) #process simulator project
-        self.addCallback('grade', ics51_callbacks.GradeFilesystemProjectOutput)
-        self.addCallback('grade', ics51_callbacks.GradeFilesystemProjectOutput)
+        self.addCallback('grade', ics51_callbacks.CompileCommand)
+        self.addCallback('grade', ics51_callbacks.RunCommand)
         self.addCallback('grade', ics51_callbacks.ViewSource)
-        self.addCallback('grade', ics51_callbacks.ViewSource)
-        self.addCallback('cleanup', ics51_callbacks.SubmissionCleanup)
+        self.addCallback('grade', ics51_callbacks.CompareFilesByLine)
         self.addCallback('cleanup', ics51_callbacks.SubmissionCleanup)
 
 def SubmissionGenerator(args):

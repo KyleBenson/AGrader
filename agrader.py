@@ -23,7 +23,7 @@ DEFAULT_ASSIGNMENT_DIR = getcwd()
 DEFAULT_ASSIGNMENT_FILE = 'assignment'
 DEFAULT_USERNAME = 'kebenson@uci.edu'
 DEFAULT_SUBMISSION_KEY = 'ucinetid'
-DEFAULT_ASSIGNMENT_KEY = 'CS143B-Project1-grades'
+DEFAULT_ASSIGNMENT_KEY = 'ICS51-Lab2-Grades'
 
 CRLF = '\r\n'
 

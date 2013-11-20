@@ -110,73 +110,6 @@ def ViewSource(self, prompt=True):
         penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)
     self.grades['sourcecode'] = self.possible_points['source_code'] - penalty
 
-def ParseOutput(fname):
-    tests = []
-    # to find  the boundary between tests, look for 'init is running'
-    # but that string could appear in multiple lines at once, possibly with a newline in between
-    # so keep a flag that tells us when we're inside a test or when we're at it's boundary
-    # note that we start out with no tests present and so the first occurrence of 'init is running' signals the start of the first test boundary
-    inside_test = True
-    with open(fname) as f:
-        # add each line to the current test
-        #    after massaging the line (removing newlines, lowercasing everything, etc.)
-        file_lines = f.readlines()
-        
-        # trim leading newlines
-        while file_lines[0] == '\n':
-            file_lines = file_lines[1:]
-        
-        # go through once to see if they use 'init'
-        uses_inits = False
-
-        for line in file_lines:
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
-            if 'init' in line:
-                uses_inits = True
-                break
-
-        for line in file_lines:
-            # hack to make sure only the word error appears in a line
-            # since that's what the students were told they could do
-            if 'error' in line:
-                line = 'error'
-
-            #remove all whitespace and lowercase, as well as periods
-            #also remove the phrase 'is running' since the expected tests don't have it
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
-
-            #ignore the 'process terminated' message that some people put at the end.  someone misspelled terminated so I truncated it...
-            if 'term' in line:
-                continue
-
-            # increment the test # when we reach the end of one
-            # but only if we were previously inside a test (or at the very beginning) so as to avoid adding extra tests that aren't really there
-            # this is the start of a new test
-            if uses_inits and 'init' in line and inside_test:
-                tests.append([])
-                inside_test = False
-            # if they didn't use the 'init' output, let's assume they at least gave us a newline...
-            elif not uses_inits and line == '' and inside_test:
-                tests.append([])
-                inside_test = False
-            # ignore newlines
-            elif not line:
-                continue
-            # this is a line inside the test
-            elif 'init' not in line:
-                inside_test = True
-            else:
-                continue
-
-            # add this line to the last test
-            if inside_test:
-                if not len(tests):
-                    self.ui.notifyError("No subtest was ever added to list of tests!")
-                    tests.append([])
-                tests[-1].append(line)
-
-    return tests
-
 def PrintListDifference(self, expected, actual, max_len=20):
     '''
     Prints the difference between two lists.  max_len argument (default = 20) determines space between first and second lists.
@@ -206,105 +139,78 @@ def PrintListDifference(self, expected, actual, max_len=20):
         
     return total_wrong
 
-def GradeMultiTestOutput(self):
+def CompareFilesByLine(self):
+    with open(self.submission) as sub:
+        outputs = sub.readlines()
+    with open(self.expected_output_filename) as exp:
+        expecteds = exp.readlines()
+
+    self.grades['score'] = len(expecteds) - self.PrintListDifference(outputs, expecteds)
+
+def FixSource(self):
+    os.system('em ' + ' '.join([self.graded_file,
+                                self.run_file]))
+
+def CompileCommand(self):
+    '''Should look like:
+    javac -cp .:deps/collections.jar:deps/introlib.jar:deps/junit-4.7.jar:edu/uci/ics/pattis/ics23/collections/ edu/uci/ics/pattis/ics23/collections/LinkedQueue.java
     '''
-    Here we just compare the output of two different programs, one is expected to be completely correct.
-    We first parse each file into the individual tests since they are all in one file and each test is worth the same amount.
-    Then compare each test one by one, prompting grader if they differ.
-    '''
-    #parse tests into nested lists
-    tests = ParseOutput(self.submission)
-    expected_tests = ParseOutput(self.expected_output_filename)
 
-    #configure scoring
-    total_score = 0
-    score_per_test = self.possible_points['output']/float(len(expected_tests))
-    
-    #go through each test that was run one by one
-    #they're a pair at a time since one is the expected output and one is the student's submission
+    try:
+        os.remove(self.run_file.replace('.java', '.class'))
+    except:
+        pass
+    compile_command = 'javac -cp %s %s %s' % (self.classpath, #dirpath + classpath_sep +
+                                              self.run_file if os.path.exists(self.run_file) else '',
+                                              self.graded_file if self.graded_file else '')
 
-    tests_done = 0
-    for test, exp_test in zip(tests, expected_tests):
-        if test != exp_test:
-            # show what was wrong first
-            # by default, and for non-interactive grading, we subtract one point for each line wrong, to a minimum of 0
-            # NOTE the hack for doing groups and changing pts wrong per line wrong
-            points_off = PrintListDifference(self, exp_test, test)
-            if 'group' in self.expected_output_filename:
-                points_off /= 2.0
+    try:
+        compile_command += ' ' + self.compiled_files
+    except AttributeError:
+        pass
 
-            default_points = max(0, score_per_test - points_off)
-
-            this_grade = self.ui.promptInt("Test %d did not match. How much credit should they get? (default = %spts) " % (tests_done, str(default_points)), default=default_points)
-            total_score += this_grade
-        else:
-            #all good!
-            total_score += score_per_test
-        tests_done += 1
-             
-    self.grades['output'] = total_score
-    self.ui.promptContinue("Output graded. Total score(%d possible): %d" % (self.possible_points['output'], total_score))
-
-
-def FilesystemProjectMassageOutput(fname):
-    '''
-    Modify the output in the given file to make it match the expected output.
-    Lower-case everything, remove commas, etc.
-    '''
-    massaged_lines = []
+    if self.args.verbose:
+        print compile_command, '\n'
         
-    with open(fname) as f:
-        file_lines = f.readlines()
-        
-        # trim leading newlines
-        while file_lines[0] == '\n':
-            file_lines = file_lines[1:]
-
-        # now massage the lines and remove any empty lines
-        for line in file_lines:
-            # skip newlines
-            if line == '\n':
-                continue
-            
+    success = False
+    while not success:
+        if os.system(compile_command) != 0:
+            if self.ui.promptBool("Compilation FAILED!!!!  Fix source code?", default=True):
+                FixSource(self)
             else:
-                # so many binary characters, here we strip non-printable ones with a recipe taken from
-                # http://stackoverflow.com/questions/92438/stripping-non-printable-characters-from-a-string-in-python
-                # ignores unicode, apparently, too
-                line = ''.join(filter(lambda x: x in string.printable, line))
+                success = True
+        else:
+            success = True
 
-                line = line.strip().replace('\t','').replace('\n','').lower().replace('.','').replace(',','')#.replace(' ', '')
+def RunCommand(self, input_script=None):
+    '''Should look like:
+    ./a.out
+    '''
+    command = './a.out'
 
-            # lines not given very explicit output formats should be shortened
-            # do this after massaging in case of character case differences
-            if 'error' in line:
-                line = 'error'
+    if input_script:
+        command += ' < ' + input_script
+    
+    if self.args.verbose:
+        print command, '\n'
 
-            # some people always said restored, never intialized
-            line = line.replace('restored', 'initialized')
+    success = False
+    while not success:
+        ret = os.system(command)
+        if ret != 0:
+            if self.ui.promptBool("Execution Failed!  Fix source code and recompile/execute?", default=True):
+                FixSource(self)
+                try:
+                    CompileCommand(self)
+                except AttributeError:
+                    if self.args.verbose:
+                        self.ui.notify('no compilation defined')
+            else:
+                success = True
+        else:
+            success = True
 
-            # some people say '1 bytes read'
-            line = line.replace('byte read', 'bytes read')
-
-            # some people say 'file abc 23, file foo 64', so I just
-            line = line.replace('file', '')
-
-            # some people do 'index = 1'
-            line = line.replace(' = ', '=')
-            
-            # some people do 'bytes read:10'
-            line = line.replace(': ', ':')
-            
-            # typo...
-            line = line.replace('intialized', 'initialized')
-            
-            # someone said this...
-            line = line.replace('disk initiated', 'disk initialized')
-            line = line.replace('deleted', 'destroyed')
-            
-            massaged_lines.append(line)
-
-    return massaged_lines
-
+    return ret
 
 def GradeFilesystemProjectOutput(self):
     '''
