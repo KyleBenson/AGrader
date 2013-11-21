@@ -3,6 +3,7 @@ from __future__ import print_function
 usage = '''
 Usage: run_submissions.py [dir=$PWD]
 Walks through the possibly specified directory ($PWD by default), dir, recursively and compile/run each submission.
+Make sure that main.cpp is in $PWD
 '''
 
 import os, sys, subprocess
@@ -10,12 +11,10 @@ import os, sys, subprocess
 def run_files(path_to_walk):
     # find every file in the current directory recursively
     for root, dirs, files in os.walk(path_to_walk):
-        # walk through all possible numbers U1 would add to the filename
         for f in files:
-            if f.endswith('.c'):
-
-                compile_command = ['g++', f]
-                run_command = ['./a.out']
+            if f.endswith('.cpp'):
+                compile_command = ['cl', 'main.cpp', f]
+                run_command = ['main']
                 run_command.append(f.split('.')[0])
 
                 if subprocess.call(compile_command):
