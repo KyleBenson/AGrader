@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 usage = '''
 Usage: run_submissions.py [dir=$PWD]
 Walks through the possibly specified directory ($PWD by default), dir, recursively and compile/run each submission.
@@ -18,13 +19,13 @@ def run_files(path_to_walk):
                 run_command.append(f.split('.')[0])
 
                 if subprocess.call(compile_command):
-                    print 'error compiling: ', f
+                    print('error compiling: ', f)
                 if subprocess.call(run_command):
-                    print 'error running: ', f
+                    print('error running: ', f)
 
 if __name__ == '__main__':
     if len(sys.argv) < 1:
-        print 'Not enough arguments!\n%s' % usage
+        print('Not enough arguments!\n%s' % usage)
     elif len(sys.argv) > 2:
         run_files(sys.argv[1])
     else:

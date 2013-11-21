@@ -1,12 +1,11 @@
-#include <cstdio>
 #include <fstream>
 #include <iostream>
 
 extern char* name;
 extern char* studentID;
-//extern int countLowerCaseCharacter(char *inputString);
+extern int countLowerCaseCharacter(char *inputString);
 // just so it compiles
-int countLowerCaseCharacter(char *inputString){ return 0; }
+//int countLowerCaseCharacter(char *inputString){ return 0; }
 
 using namespace std;
 
