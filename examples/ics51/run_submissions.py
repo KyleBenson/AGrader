@@ -12,20 +12,25 @@ def run_files(path_to_walk):
     # find every file in the current directory recursively
     for root, dirs, files in os.walk(path_to_walk):
         for f in files:
-            if f.endswith('.cpp'):
-                compile_command = ['cl', 'main.cpp', f]
+            ucinetid = f.split('.')[0]
+            if f.endswith('.cpp') and not os.path.exists(ucinetid):
+                compile_command = ['cl', 'main.cpp', os.path.join(root,f)]
                 run_command = ['main']
-                run_command.append(f.split('.')[0])
+                run_command.append(ucinetid)
+
+                print(compile_command)
+                print(run_command)
 
                 if subprocess.call(compile_command):
-                    print('error compiling: ', f)
+                    input('error compiling: ' + f)
                 if subprocess.call(run_command):
-                    print('error running: ', f)
+                    input('error running: ' + f)
 
 if __name__ == '__main__':
+    print("args: ", sys.argv)
     if len(sys.argv) < 1:
         print('Not enough arguments!\n%s' % usage)
-    elif len(sys.argv) > 2:
+    elif len(sys.argv) > 1:
         run_files(sys.argv[1])
     else:
         run_files(os.getcwd())

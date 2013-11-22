@@ -32,3 +32,6 @@ pip-log.txt
 
 
 *submissions/
+
+# compiled C/C++
+*a.out

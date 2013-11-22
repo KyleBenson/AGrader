@@ -9,7 +9,7 @@ extern char *yourName;
 extern char *studentID;
 //extern int numTests; //we want to always do 4 tests
 
-extern void bit_operations(unsigned long inputDWord, unsigned long *outputDWord);
+extern long bit_operations(unsigned long inputDWord, unsigned long *outputDWord);
 //use this declaration for compiling without linking to student submission
 //void bit_operations(unsigned long inputDWord, unsigned long *outputDWord) {*outputDWord = 0x55aa033c;}
 
@@ -20,7 +20,7 @@ int main(int args, char ** argv)
     ucinetid = argv[1];
   }
 
-  int numTests = 4;
+  int numTests = 1;
   unsigned long myVar;
   unsigned long tmpValue;
   unsigned long shouldBe;
@@ -55,7 +55,7 @@ int main(int args, char ** argv)
     tmpValue = myVar;
 
     bit_operations(myVar, &tmpValue);
-    //printf("RESULT -> SHOULD BE: %X - is: %X\n\n", shouldBe, tmpValue);
+    printf("RESULT -> SHOULD BE: %X - is: %X\n\n", shouldBe, tmpValue);
 
     // score results, giving partial credit for getting individual bytes correct
     if ((tmpValue & 0x000000ff) == (shouldBe & 0x000000ff))
