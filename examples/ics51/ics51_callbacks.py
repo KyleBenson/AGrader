@@ -141,7 +141,7 @@ def PrintListDifference(self, expected, actual, max_len=20):
 
 def ReadGradeFromFile(self):
     with open(self.submission) as f:
-        self.grades['score'] = f.readline()
+        self.grades['score'] = f.readline().split(',')[1]
 
 def CompareFilesByLine(self):
     with open(self.submission) as sub:
