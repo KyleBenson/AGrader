@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 # @author: Kyle Benson
-# (c) Kyle Benson 2012
+# (c) Kyle Benson 2012-2015
 
 AGRADER_DESCRIPTION=\
 '''Loads the assignments in the specified directory.  See documentation for information about workspaces, UIs, Gradebooks, and creating Assignments.
@@ -14,6 +14,10 @@ import sys
 from getpass import getpass
 #password = getpass('Enter password: ')
 import argparse
+
+#TODO: not hard-code this
+sys.path.append('/Users/kyle/repos')
+DEFAULT_GDATA_CREDS = '/Users/kyle/.gdata.creds'
 
 # Some failsafe defaults for this version installation
 # ($ Not yet supported! $)
@@ -43,7 +47,7 @@ def ReadConfig(args):
             #give up and get the default one
             if args.verbose:
                 print 'Using default workspace'
-            from Workspace import Workspace
+            from AGrader.Workspace import Workspace
             workspace = Workspace.GetDefault(args)
     finally:
         sys.path[:] = oldPath
@@ -97,14 +101,16 @@ def ParseArgs(args):
     # Control UI
     parser.add_argument('-ui', metavar='interactive', action='store',
                         help='''Change the user interface. Current options are: default(clui), clui, echo, none(echo), off(none)''')
-    
+
     # User preferences
     parser.add_argument('--username', action='store', default=DEFAULT_USERNAME,
                         help='''Username for logging into Gradebook, retrieving submissions, etc.''')
     parser.add_argument('--passwd', action='store', default=None,
                         help='''Password for logging into Gradebook, retrieving submissions, etc.''')
-    parser.add_argument('--verbose', action='store_true', 
+    parser.add_argument('--verbose', action='store_true',
                         help='''Verbosely print logging / debugging information during execution''')
+    parser.add_argument('--gdata_creds', action='store', default=DEFAULT_GDATA_CREDS,
+                        help='''OAuth2 credentials JSON file for accessing Google APIs.''')
 
     # Locations
     parser.add_argument('--config_dir', default=DEFAULT_CONFIG_DIR,
@@ -113,7 +119,7 @@ def ParseArgs(args):
                         help='''User's configuration file (default = %(default)s''')
 
     return_args = parser.parse_args(args)
-    
+
     # set some hard values
     return_args.interactive = True
     return return_args
