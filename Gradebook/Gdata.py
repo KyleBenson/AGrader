@@ -2,7 +2,7 @@
 # @author: Kyle Benson
 # (c) Kyle Benson 2012
 
-from BaseGradebook import BaseGradebook
+from AGrader.Gradebook.BaseGradebook import BaseGradebook
 from threading import Thread
 
 # defaults that don't really do anything, just serve as flags to show the values are unset
@@ -45,6 +45,11 @@ class GdataSpreadsheet(BaseGradebook, Thread):
         '''
         Only prompt if it hasn't been explicitly specified.
         '''
+        # OAuth2 login now required
+        if self.args.verbose:
+            self.ui.notify("No longer using username/password credentials!  Skipping that step...")
+        return
+
         if self.username == DEFAULT_USERNAME:
             self.username = self.ui.promptStr('Enter google docs user info (default: %s): ' % self.username,
                                               default=self.username)
@@ -57,8 +62,23 @@ class GdataSpreadsheet(BaseGradebook, Thread):
 
         while not success:
             self.gd_client = self.service.SpreadsheetsService() # prepend: gdata.spreadsheet.
-            self.gd_client.email = self.username
-            self.gd_client.password = self.password
+            # login via username/password appears to no longer be supported.
+            # OAuth2 is now required
+            #self.gd_client.email = self.username
+            #self.gd_client.password = self.password
+
+            # this requires using a browser to authorize the app, can do this
+            # via command line and just store the credentials for later
+            # retrieval instead....
+
+            #from oauth2client.client import flow_from_clientsecrets
+            #credentials = flow_from_clientsecrets(self.args.gdata_creds, scope=["https://spreadsheets.google.com/feeds"])
+
+            from oauth2client.file import Storage
+            credStore = Storage(self.args.gdata_creds)
+            credentials = credStore.get()
+            self.gd_client.additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token}
+
             try:
                 self.gd_client.ProgrammaticLogin()
                 success = True
@@ -101,7 +121,7 @@ class GdataSpreadsheet(BaseGradebook, Thread):
             except Error as e:
                 if self.args.verbose:
                     self.ui.notifyError(e)
-                self.ui.notifyError("Couldn't convert submitted grade to a string for some reason. Gradebook.Gdata.submitGrades") 
+                self.ui.notifyError("Couldn't convert submitted grade to a string for some reason. Gradebook.Gdata.submitGrades")
 
             self.gd_client.UpdateRow(self.gdoc_feed.entry[self.rowIndexMap[key]],grades)
         except AttributeError as e:
