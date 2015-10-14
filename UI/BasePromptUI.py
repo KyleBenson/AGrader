@@ -10,13 +10,12 @@ class BasePromptUI(object):
       '''
 
       def __init__(self, args):
-            _interactive = True
             self.newline = '\r\n'
 
             try:
                   self._interactive = args.interactive
             except AttributeError:
-                  _interactive = True
+                  self._interactive = True
 
             try:
                   self.verbose = args.verbose
@@ -26,10 +25,10 @@ class BasePromptUI(object):
 ####### SETTINGS #######
       def isInteractive(self):
             return self._interactive
-      
+
       def setInteractive(self, new_interactive):
             self._interactive = new_interactive
-    
+
 ####### BASE PROMPTS ########
       def promptStr(self, msg=None, default=None):
             raise NotImplementedError
@@ -58,7 +57,7 @@ class BasePromptUI(object):
             if msg is None:
                   msg = 'Please enter an integer%s:' % ((' (default is %i)' % default) if default is not None else '')
             return self.promptType(int, msg, 'Not a valid integer.', default=default)
-    
+
       def promptFloat(self, msg=None, default=None):
             return self.promptType(float, msg if msg is not None else 'Please enter a float: ',
                                    'Please enter a valid number.', default=default)
@@ -75,7 +74,7 @@ class BasePromptUI(object):
                               return value
                   except TypeError:
                         raise ValueError
-                  
+
             return self.promptType(__optionsCheck, msg, 'Entry not found.' if err_msg is None else err_msg,
                                    default=default)
 
@@ -84,19 +83,19 @@ class BasePromptUI(object):
                   sep = (self.newline + '  %s: ')
 
             if msg is None:
-                  msg = ''.join(['Please enter the integer index of which of the following options you want:', self.newline, 
+                  msg = ''.join(['Please enter the integer index of which of the following options you want:', self.newline,
                                  sep.join([''] + options) % tuple(range(1, len(options) + 1)),
                                  self.newline, 'Enter choice: '])
-                  
+
             def __IdxCheck(value, length=len(options)):
                   idx = int(value)
                   if idx < 1 or idx > length:
                         raise ValueError
                   else:
                         return idx
-                        
+
             return self.promptType(__IdxCheck, msg, 'Please enter a valid index.')
-    
+
       def promptBool(self, msg=None, default=None):
             if not msg:
                   msg = 'Please enter yes, no, y, n, or press enter to choose %s: ' % 'yes' if default else 'no'
@@ -106,9 +105,9 @@ class BasePromptUI(object):
                   default = ('y' if default else 'n')
 
             value = self.promptOptions(('y', 'n', 'yes', 'no', ''), msg, default=default)
-        
+
             return not value.startswith('n')
-    
+
       def promptContinue(self, msg=None):
             return self.promptStr(msg if msg is not None else 'Press enter to continue...')
 
