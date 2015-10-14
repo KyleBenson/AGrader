@@ -2,8 +2,8 @@
 # @author: Kyle Benson
 # (c) Kyle Benson 2012
 
-from AgraderWorkflow import AgraderWorkflow
-from Assignment import Assignment
+from AGrader.AgraderWorkflow import AgraderWorkflow
+from AGrader.Assignment import Assignment
 from os import listdir
 from sys import path
 
@@ -32,7 +32,7 @@ class Workspace(AgraderWorkflow):
                 from UI.AgraderCLUI import AgraderCLUI
                 self.ui = AgraderCLUI(args)
 
-            if not args.interactive:
+            if args is not None and not args.interactive:
                 self.ui.setInteractive(False)
 
         # set the Gradebook
@@ -50,12 +50,11 @@ class Workspace(AgraderWorkflow):
         '''
         Create a default Workspace instance given the possibly specified arguments.  Will cache this instance.
         '''
-        workspace = Workspace(args)
-        
         if not Workspace.__currentWorkspace:
+            workspace = Workspace(args)
             Workspace.__currentWorkspace = workspace
 
-        return workspace
+        return Workspace.__currentWorkspace
 
 
     @staticmethod
@@ -66,11 +65,11 @@ class Workspace(AgraderWorkflow):
 
     def addAssignment(self, assignment):
         self.assignments.append(assignment)
-    
+
 
     @staticmethod
     def __generateAndCallSubmissions(submission_generator, args):
-        
+
         def __f__():
             for sub in submission_generator(args):
                 sub()
@@ -102,19 +101,19 @@ class Workspace(AgraderWorkflow):
                 # try loading assignments
                 assignments = []
                 for attr in dir(module):
-                    cls = getattr(module, attr)
+                    theClass = getattr(module, attr)
 
                     if self.args.verbose:
                         self.ui.notify('Checking class %s' % attr)
 
                     try:
                         #this is a good assignment if it implements Assignment but isn't that base class itself
-                        isassignment = issubclass(cls, Assignment) and cls is not Assignment
+                        isassignment = issubclass(theClass, Assignment) and theClass is not Assignment
 
                         if isassignment:
-                            assignments.append(cls)
+                            assignments.append(theClass)
                             if self.args.verbose:
-                                self.ui.notify('Found assignment %s' % cls)
+                                self.ui.notify('Found assignment %s' % theClass)
                     except TypeError as e:
                         if self.args.verbose:
                             self.ui.notify(e)
@@ -140,13 +139,13 @@ class Workspace(AgraderWorkflow):
                             self.ui.notify('adding assignments themselves since no submission generator')
                         for a in assignments:
                             self.addAssignment(a)
-                                                    
+
         if not self.assignments:
             self.ui.notifyError("No assignments found.")
 
         return self.assignments
 
-                            
+
     def __call__(self):
         '''Executes the workflow.  Calls setup callbacks, runs each assignment (submitting grades after each one),
         then calls cleanup callbacks.  The callbacks take the workspace as an argument.'''
@@ -164,7 +163,7 @@ class Workspace(AgraderWorkflow):
         '''
         if self.gradebook:
             return self.gradebook.getGrades(key)
-        
+
         if self.args.gradebook != 'none':
             self.ui.notifyError('No gradebook connected! Abort? ')
         return {} #blank gradebook if they want to continue
