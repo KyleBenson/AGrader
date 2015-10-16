@@ -7,7 +7,7 @@ def SetMainMenuSignal(self):
     def __menu_signal_handler(sig, frame):
         # Rebind SIGINT to kill now
         def __exit_signal_handler(sig, frame):
-            print 'Goodbye!'
+            self.ui.notify('Goodbye!')
             sys.exit(0)
         signal.signal(signal.SIGINT, __exit_signal_handler)
 
@@ -70,10 +70,14 @@ def FixSource(self):
                                 self.run_file]))
 
 def CheckSubmissionTime(self):
+    #expectedFilenames = ('average', 'compute', self.temp_filename)
+    programs = ['handle_signals', 'send_signals']
+    expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
+    expectedFilenames.append('.graded')
 
     for (dirpath, dirnames, filenames) in os.walk(self.submission_dir):
         # skip over compiled files
-        t = [datetime.datetime.fromtimestamp(os.path.getmtime(os.path.join(dirpath,f))) for f in filenames if f not in ('average', 'compute', self.temp_filename)]
+        t = [datetime.datetime.fromtimestamp(os.path.getmtime(os.path.join(dirpath,f))) for f in filenames if f not in expectedFilenames]
         submission_time = max(t)
         # we (may) need to remove tzinfo as the deadline has no such info
         #submission_time = submission_time.replace(tzinfo=None)
@@ -102,11 +106,11 @@ def RunCommand(self, program_command, input_script=None):
     if input_script is not None:
         command += " < %s" % input_script
     # piping with tee results in a return value of 0 always!
-    command += ' > %s' % self.temp_filename
-    #command += ' | tee %s' % self.temp_filename
+    command += ' > %s' % self.temp_filename + '_%s' % problemName
+    #command += ' | tee %s' % self.temp_filename + '_%s' % problemName
 
     if self.args.verbose:
-        print command, '\n'
+        self.ui.notify(command, '\n')
 
     # for now, we're just going to assume that we won't make any changes to
     # source code: either it runs or it doesn't!
@@ -145,7 +149,7 @@ def GradeAverage(self):
 
     # Now for grading: 40 pts possible
     score = 0
-    with open(self.temp_filename) as f:
+    with open(self.temp_filename + '_%s' % problemName) as f:
         try:
             answer = float(f.readlines()[1].strip())
             if answer == 5.5:
@@ -157,7 +161,7 @@ def GradeAverage(self):
             self.grades['comments'] += "Error parsing average output: %s; " % e
 
     RunCommand(self, "./average %s" % os.path.join(self.assignment_dir, "numbers2.dat"))
-    with open(self.temp_filename) as f:
+    with open(self.temp_filename + '_%s' % problemName) as f:
         try:
             answer = float(f.readlines()[1].strip())
             # answer should be 502.28
@@ -197,7 +201,7 @@ def GradeCompute(self):
             self.grades['comments'] += "compute returned error code %d during execution with numbers.dat; " % ret
             return
 
-    with open(self.temp_filename) as f:
+    with open(self.temp_filename + '_%s' % problemName) as f:
         try:
             answers = f.readlines()
             theMax = float(answers[0].strip().split(":")[1])
@@ -219,7 +223,7 @@ def GradeCompute(self):
         self.grades['comments'] += "compute returned error code %d during execution with larger input file; " % ret
 
     else:
-        with open(self.temp_filename) as f:
+        with open(self.temp_filename + '_%s' % problemName) as f:
             try:
                 answers = f.readlines()
                 theMax = float(answers[0].strip().split(":")[1])
@@ -238,11 +242,196 @@ def GradeCompute(self):
     self.grades['compute'] = score
 
 
+########################################
+####  SIGNALS
+########################################
+
+
+# seconds we expect to be able to wait before sending the next signal
+global SIGNAL_SLEEP_TIME
+SIGNAL_SLEEP_TIME = 0.01
+
+# note that problemName this has to be a gdata key for grading, which can't have _s!
+def problemNameToGradingKey(problemName):
+    return problemName.replace('_', '')
+
+def GradeHandleSignals(self):
+    import signal
+    from time import sleep
+    import subprocess
+
+    global SIGNAL_SLEEP_TIME
+
+    problemName = 'handle_signals'
+    ret = CompileCommand(self, "gcc handle_signals.c -o handle_signals")
+    if ret != 0:
+        if self.ui.promptBool("Compilation failed; skip assignment? ", default=True):
+            self.grades[problemNameToGradingKey(problemName)] = 0
+            self.grades['comments'] += "Compilation of handle_signals.c failed with code %d" % ret
+            return
+
+    # total can be up to 50 pts
+    score = 0
+
+    with open(self.temp_filename + '_%s' % problemName, "w") as f:
+        proc = subprocess.Popen("./%s" % problemName, stdout=f)
+
+        #TODO: handle this
+        ret = 0
+        if ret != 0:
+            if not self.ui.promptBool("Error (%d) running compute! Continue anyway? " % ret, default=True):
+                self.grades[problemNameToGradingKey(problemName)] = 0
+                self.grades['comments'] += "%s returned error code %d during execution; " % (problemName, ret)
+                return
+
+        pid = proc.pid
+
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGQUIT)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGINT)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGTSTP)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGQUIT)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGTSTP)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGTSTP)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.wait()
+
+    with open(self.temp_filename + '_%s' % problemName) as f:
+        try:
+            lines = f.readlines()
+            nints  = int(lines[1][len("Interrupt: "):])
+            ntstps = int(lines[2][len("Stop: "):])
+            nquits = int(lines[3][len("Quit: "):])
+            if nints == 1 and nquits == 2:
+                score += 40
+                if ntstps == 3:
+                    score += 10
+                else:
+                    self.grades['comments'] += "number of SIGTSTPs not counted properly! got %d, expected %d; " % (ntstps, 3)
+            else:
+                # if they switched up the order of the output values, give half
+                # credit
+                if sorted([nints, nquits, ntstps]) == [1,2,3]:
+                    score += 20
+                    self.grades['comments'] += "You switched up your output values it seems.  Be more careful!; "
+                self.grades['comments'] += "Incorrect output: expected 1,3,2 and got %d,%d,%d; " % (nints, ntstps, nquits)
+
+        except Exception as e:
+            self.ui.notify("Error parsing: %s" % e)
+
+            # longer sleeps may resolves this issue
+            if self.ui.promptBool("Try regrading with longer sleeps? ", default=True):
+                SIGNAL_SLEEP_TIME += 1
+                GradeHandleSignals(self)
+                return # so we don't overwrite score
+
+            self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+            score = 0
+
+    self.grades[problemNameToGradingKey(problemName)] = score
+
+    # reset this in case we changed it for problemed submissions
+    SIGNAL_SLEEP_TIME = 0.01
+
+
+def GradeSendSignals(self):
+    import signal
+    from time import sleep
+    import subprocess
+
+    global SIGNAL_SLEEP_TIME
+
+    problemName = 'send_signals'
+    ret = CompileCommand(self, "gcc %s.c -o %s" % (problemName, problemName))
+    if ret != 0:
+        if self.ui.promptBool("Compilation failed; skip assignment? ", default=True):
+            self.grades[problemNameToGradingKey(problemName)] = 0
+            self.grades['comments'] += "Compilation of %s.c failed with code %d" % (problemName, ret)
+            return
+
+    # total can be up to 50 pts
+    score = 0
+    global sigsRecvd
+    sigsRecvd = 0
+
+    def sighandler(signum, frame):
+        if self.args.verbose:
+            self.ui.notify("Received SIGUSR2!")
+        global sigsRecvd
+        sigsRecvd += 1
+
+    signal.signal(signal.SIGUSR2, sighandler)
+
+    with open(self.temp_filename + '_%s' % problemName, "w") as f:
+        proc = subprocess.Popen("./%s" % problemName, stdout=f)
+
+        #TODO: handle proc not running
+
+        pid = proc.pid
+
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGUSR1)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGUSR1)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.send_signal(signal.SIGINT)
+        sleep(SIGNAL_SLEEP_TIME)
+        proc.wait()
+
+    expectedAnswer = 2
+    with open(self.temp_filename + '_%s' % problemName) as f:
+        try:
+            answer = f.readlines()[0]
+            answer = int(answer.replace("Signals: ", ""))
+            if answer == expectedAnswer:
+                score += 20
+                if answer == sigsRecvd:
+                    score += 20
+                else:
+                    self.grades['comments'] += "Should have received %d SIGUSR2s but only got %d; " % (expectedAnswer, sigsRecvd)
+            elif answer == expectedAnswer + 1:
+                score += 10
+                self.grades['comments'] += "Incorrect (off by 1) %s output: expected %d and got %d; " % (problemName, expectedAnswer, answer)
+                if expectedAnswer == sigsRecvd:
+                    score += 20
+                else:
+                    self.grades['comments'] += "Should have received %d SIGUSR2s but only got %d; " % (expectedAnswer, sigsRecvd)
+            else:
+                self.grades['comments'] += "Incorrect %s output: expected %d and got %d and received %d SIGUSR2s; " % (problemName, expectedAnswer, answer, sigsRecvd)
+
+        except Exception as e:
+            self.ui.notify("Error parsing: %s" % e)
+
+            # longer sleeps may resolves this issue
+            if self.ui.promptBool("Try regrading with longer sleeps? ", default=True):
+                SIGNAL_SLEEP_TIME += 1
+                GradeHandleSignals(self)
+                return # so we don't overwrite score
+
+            self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+            score = 0
+
+    self.grades[problemNameToGradingKey(problemName)] = score
+
+    # reset this in case we changed it for problemed submissions
+    SIGNAL_SLEEP_TIME = 0.01
+
+
 def ViewPart1(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
     if not prompt or self.ui.promptBool ("View Part1?", default=True):
         os.system('less part1.txt')
-    self.grades['part1'] = self.ui.promptInt("How many points did they get?", default=10)
+    grade = self.ui.promptInt("How many points did they get?", default=10)
+    if grade != 10 and prompt:
+            comment = self.ui.promptStr("Want to leave a comment as to why? ", default=None)
+            if comment is not None:
+                self.grades['comments'] += "Part1: %s; " % comment
+    self.grades['part1'] = grade
 
 
 def ViewSource(self, prompt=True):
@@ -266,7 +455,8 @@ def SubmissionCleanup(self):
     '''Executes after running programs and viewing source'''
 
     if self.args.verbose:
-        print self.grades
+        outputText = "\n"*2 + "\n".join(["%s: %s" % (k,v) for k,v in self.grades.iteritems()])
+        self.ui.notify(outputText)
     self.gradebook.submitGrades(self.grades, self.grade_key)
 
     self.ui.notifySubmissionCleanup(self)

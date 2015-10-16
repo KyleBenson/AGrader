@@ -38,14 +38,17 @@ class MyAssignment(Assignment):
         workspace = Workspace.GetWorkspace()
         self.grades = workspace.getGrades(self.grade_key)
         # need to make this an empty string so we can append to it
-        self.grades['comments'] = ''
+        if self.grades['comments'] is None:
+            self.grades['comments'] = ''
         self.gradebook = workspace.gradebook
         self.ui = workspace.ui
 
         # Callbacks
         self.addCallback('setup', SubmissionSetup)
         self.addCallback('grade', CheckSubmissionTime)
-        self.addCallback('grade', ViewPart1)
+
+        # Common across most CS143A HW#'s
+        #self.addCallback('grade', ViewPart1)
 
         # HW1 Callbacks
         #self.addCallback('grade', GradeAverage)
