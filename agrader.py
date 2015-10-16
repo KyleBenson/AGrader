@@ -8,6 +8,7 @@ AGRADER_DESCRIPTION=\
 '''
 
 from os import listdir, system, getcwd, chdir, getcwd
+import os.path
 from os.path import isdir, join, split, exists
 from sys import argv
 import sys
@@ -16,12 +17,12 @@ from getpass import getpass
 import argparse
 
 #TODO: not hard-code this
-sys.path.append('/Users/kyle/repos')
-DEFAULT_GDATA_CREDS = '/Users/kyle/.gdata.creds'
+sys.path.append(os.path.join(os.path.expanduser('~'), 'repos'))
+DEFAULT_GDATA_CREDS = sys.path.append(os.path.join(os.path.expanduser('~'), '.gdata.creds'))
 
 # Some failsafe defaults for this version installation
 # ($ Not yet supported! $)
-DEFAULT_CONFIG_DIR = '~/.agrader/'
+DEFAULT_CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.agrader')
 DEFAULT_CONFIG_FILE = 'config'
 DEFAULT_ASSIGNMENT_DIR = getcwd()
 DEFAULT_ASSIGNMENT_FILE = 'assignment'
