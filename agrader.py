@@ -18,7 +18,7 @@ import argparse
 
 #TODO: not hard-code this
 sys.path.append(os.path.join(os.path.expanduser('~'), 'repos'))
-DEFAULT_GDATA_CREDS = sys.path.append(os.path.join(os.path.expanduser('~'), '.gdata.creds'))
+DEFAULT_GDATA_CREDS = os.path.join(os.path.expanduser('~'), '.gdata.creds')
 
 # Some failsafe defaults for this version installation
 # ($ Not yet supported! $)
