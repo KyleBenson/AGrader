@@ -24,7 +24,7 @@ class MyAssignment(Assignment):
         # HW2 deadline
         self.submission_deadline = datetime.datetime.strptime('Wed Oct 14 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
 
-        self.temp_filename = os.path.join(args.assignment_dir, '.temp_output_file')
+        self.temp_filename = os.path.join(submission_dir, '.temp_output_file')
         self.args = args
         self.assignment_dir = args.assignment_dir
 
