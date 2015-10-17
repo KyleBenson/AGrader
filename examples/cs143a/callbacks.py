@@ -74,6 +74,7 @@ def CheckSubmissionTime(self):
     programs = ['handle_signals', 'send_signals']
     expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
     expectedFilenames.append('.graded')
+    expectedFilenames.append('.grade_dict')
 
     for (dirpath, dirnames, filenames) in os.walk(self.submission_dir):
         # skip over compiled files
@@ -91,6 +92,17 @@ def CheckSubmissionTime(self):
         elif submission_time > self.submission_deadline:
             self.ui.notify("Assignment turned in WAY past deadline; they get a 0!")
             self.grades['percentage'] = 0
+
+
+def ReadGradesFromFile(self):
+    '''Read the grades from an input file and replace the ones we read from the other Gradebook.
+    Useful for transferring grades from files to Google Spreadsheets (Gdata)
+    '''
+
+    from AGrader.Gradebook.FileGradebook import FileGradebook as gb
+    myGb = gb(self.ui, self.args)
+    self.grades = myGb.getGrades(self.grade_key)
+
 
 def CompileCommand(self, compile_command='make'):
 

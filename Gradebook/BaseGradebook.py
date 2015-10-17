@@ -10,6 +10,7 @@ class BaseGradebook(AgraderWorkflow):
     def __init__(self, ui):
         self.ui = ui
 
+
     def submitGrades(self, grades, key):
         pass
 

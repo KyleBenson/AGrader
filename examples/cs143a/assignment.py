@@ -45,6 +45,8 @@ class MyAssignment(Assignment):
 
         # Callbacks
         self.addCallback('setup', SubmissionSetup)
+        self.addCallback('setup', ReadGradesFromFile)
+
         self.addCallback('grade', CheckSubmissionTime)
 
         # Common across most CS143A HW#'s
@@ -55,8 +57,8 @@ class MyAssignment(Assignment):
         #self.addCallback('grade', GradeCompute)
 
         # HW2 Callbacks
-        self.addCallback('grade', GradeHandleSignals)
-        self.addCallback('grade', GradeSendSignals)
+        #self.addCallback('grade', GradeHandleSignals)
+        #self.addCallback('grade', GradeSendSignals)
 
         self.addCallback('cleanup', SubmissionCleanup)
         #self.addCallback('grade', SubmitGrades)

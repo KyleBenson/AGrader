@@ -41,6 +41,9 @@ class Workspace(AgraderWorkflow):
         if args is None or args.gradebook.lower() == 'gdata':
             from Gradebook.Gdata import GdataSpreadsheet
             self.gradebook = GdataSpreadsheet(self.ui, args)
+        elif args is not None and args.gradebook.lower() == 'file':
+            from Gradebook.FileGradebook import FileGradebook
+            self.gradebook = FileGradebook(self.ui, args)
         elif args is not None and args.gradebook != 'none':
             self.ui.notifyError('Unrecognized gradebook %s. Abort?' % args.gradebook)
 
