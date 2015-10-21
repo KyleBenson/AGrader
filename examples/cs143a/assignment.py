@@ -45,7 +45,9 @@ class MyAssignment(Assignment):
 
         # Callbacks
         self.addCallback('setup', SubmissionSetup)
-        self.addCallback('setup', ReadGradesFromFile)
+
+        # Uncomment this to transfer grades from file to Gdata
+        #self.addCallback('setup', ReadGradesFromFile)
 
         self.addCallback('grade', CheckSubmissionTime)
 
@@ -75,6 +77,10 @@ def SubmissionGenerator(args):
         # If we specified a specific set of submissions, only execute for them
         if (not args.regrade and '.graded' in listdir(submission_dir)) or (args.submissions and username not in args.submissions):
             continue
+
+        # Uncomment this if you want to transfer grades from files to Gdata
+        #if '.grade_dict' not in listdir(submission_dir):
+            #continue
 
         sub = MyAssignment(submission_dir, args)
         yield sub

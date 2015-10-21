@@ -101,7 +101,23 @@ def ReadGradesFromFile(self):
 
     from AGrader.Gradebook.FileGradebook import FileGradebook as gb
     myGb = gb(self.ui, self.args)
-    self.grades = myGb.getGrades(self.grade_key)
+    grades = myGb.getGrades(self.grade_key)
+
+    # NOTE: the two if statements are hacks for CS143A-HW2 that allow us to do
+    # some funny merging of file grades to Gdata with part1 already graded
+
+    ## merge comments so we don't delete them
+    #if 'comments' in self.grades.keys() and self.grades['comments'] is not None:
+        #comments = self.grades['comments']
+        #if 'comments' in grades.keys() and grades['comments'] is not None:
+            #comments += grades['comments']
+        #grades['comments'] = comments
+
+    ## save scores from part1
+    #if 'part1' in self.grades.keys() and self.grades['part1'] is not None:
+        #grades['part1'] = self.grades['part1']
+
+    self.grades = grades
 
 
 def CompileCommand(self, compile_command='make'):
@@ -291,7 +307,7 @@ def GradeHandleSignals(self):
         #TODO: handle this
         ret = 0
         if ret != 0:
-            if not self.ui.promptBool("Error (%d) running compute! Continue anyway? " % ret, default=True):
+            if not self.ui.promptBool("Error (%d) running %s! Continue anyway? " % (problemName, ret), default=True):
                 self.grades[problemNameToGradingKey(problemName)] = 0
                 self.grades['comments'] += "%s returned error code %d during execution; " % (problemName, ret)
                 return
