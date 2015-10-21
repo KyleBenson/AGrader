@@ -123,7 +123,7 @@ def ReadGradesFromFile(self):
 def CompileCommand(self, compile_command='make'):
 
     if self.args.verbose:
-        self.ui.notify(compile_command, '\n')
+        self.ui.notify(compile_command)
 
     ret = os.system(compile_command)
     return ret
