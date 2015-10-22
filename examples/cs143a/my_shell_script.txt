@@ -1,0 +1,12 @@
+mkdir foo
+touch foo/bar
+mv foo baz
+ls -1 baz
+mkdir -p baz/foo/bar
+cp baz/bar baz/foo/bar/
+
+touch baz/empty
+touch baz/blah
+fhgwgads mkdir nonsense
+
+rm baz/blah
