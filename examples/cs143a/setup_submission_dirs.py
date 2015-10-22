@@ -12,6 +12,10 @@ the proper last modified time of the submissions in order to check for extra cre
 import os, sys, shutil
 import datetime
 
+# Can config this script to fix submission times on already setup submission dir
+MOVE_TO_DIRS=True
+FIX_MOVED_SUBMISSION_TIMES=False
+
 def setup_files(path_to_walk, manifest_file):
     # first, we need to parse the manifest file to get all the correct time
     # values for submissions
@@ -32,24 +36,33 @@ def setup_files(path_to_walk, manifest_file):
 
     # find every file in the current directory recursively
     for root, dirs, files in os.walk(path_to_walk):
-        for f in files:
-            ucinetid = f.split('_')[0]
-            submission_dirname = os.path.join(path_to_walk, ucinetid)
-            new_filename = '_'.join(f.split('_')[1:])
-            new_filename = os.path.join(path_to_walk, ucinetid, new_filename)
-            print("Moving %s to %s" % (f, new_filename))
-
-            # if we haven't made this directory yet, create it first
-            if not os.path.exists(submission_dirname):
-                os.mkdir(submission_dirname)
-
-            # move this file into the appropriate directory
-            shutil.move(os.path.join(path_to_walk, f), new_filename)
-
-            # finally, set the last modified time appropriately to reflect the
-            # submission upload time
-            theTime = int(time_info[f].strftime("%s"))
-            os.utime(new_filename, (theTime, theTime))
+        if MOVE_TO_DIRS:
+            for f in files:
+                ucinetid = f.split('_')[0]
+                submission_dirname = os.path.join(path_to_walk, ucinetid)
+                new_filename = '_'.join(f.split('_')[1:])
+                new_filename = os.path.join(path_to_walk, ucinetid, new_filename)
+                print("Moving %s to %s" % (f, new_filename))
+    
+                # if we haven't made this directory yet, create it first
+                if not os.path.exists(submission_dirname):
+                    os.mkdir(submission_dirname)
+    
+                # move this file into the appropriate directory
+                shutil.move(os.path.join(path_to_walk, f), new_filename)
+    
+        if FIX_MOVED_SUBMISSION_TIMES:
+            for d in dirs:
+                ucinetid = d
+                for f in os.listdir(os.path.join(root, d)):
+                    new_filename = os.path.join(root, d, f)
+    	    	# finally, set the last modified time appropriately to reflect the
+    	    	# submission upload time
+                    try: # some will be compiled or AGrader files
+                        theTime = int(time_info[ucinetid + "_" + f].strftime("%s"))
+                        os.utime(new_filename, (theTime, theTime))
+                    except KeyError:
+                        continue
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

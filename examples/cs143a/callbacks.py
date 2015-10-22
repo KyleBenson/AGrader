@@ -50,7 +50,7 @@ def CorrectGrades(self):
     while True:
         self.ui.ShowGrades(grades)
         option = self.ui.promptList(sorted(grades.keys()), "Which grades would you like to correct? Leave blank when done.\n", default='')
-        print option
+        self.ui.notify(option)
         if not option:
             break
 
@@ -123,7 +123,7 @@ def ReadGradesFromFile(self):
 def CompileCommand(self, compile_command='make'):
 
     if self.args.verbose:
-        print compile_command, '\n'
+        self.ui.notify(compile_command)
 
     ret = os.system(compile_command)
     return ret
@@ -334,19 +334,32 @@ def GradeHandleSignals(self):
             nints  = int(lines[1][len("Interrupt: "):])
             ntstps = int(lines[2][len("Stop: "):])
             nquits = int(lines[3][len("Quit: "):])
-            if nints == 1 and nquits == 2:
-                score += 40
-                if ntstps == 3:
-                    score += 10
-                else:
-                    self.grades['comments'] += "number of SIGTSTPs not counted properly! got %d, expected %d; " % (ntstps, 3)
+            # give points just for even attempting
+            score += 10
+
+            if nquits == 2:
+	        score += 10
             else:
-                # if they switched up the order of the output values, give half
-                # credit
-                if sorted([nints, nquits, ntstps]) == [1,2,3]:
+		self.grades['comments'] += "You didn't count SIGQUITs properly!  Probably because the \ char on the previous line commented out your increment: be more careful and check your work! got %d, expected %d; " % (nquits, 2)
+
+	    if nints == 1:
+	        score += 10
+            else:
+		self.grades['comments'] += "You didn't count SIGINTs properly! got %d, expected %d; " % (nints, 1)
+
+	    if ntstps == 3:
+	        score += 10
+            else:
+	        self.grades['comments'] += "number of SIGTSTPs not counted properly! got %d, expected %d; " % (ntstps, 3)
+
+            if score < 40:
+                # if they switched up the order of the output values, give
+		# a little over half credit
+                if sorted([nints, nquits, ntstps]) == [1,2,3]: # should only have 20 points here
                     score += 20
                     self.grades['comments'] += "You switched up your output values it seems.  Be more careful!; "
-                self.grades['comments'] += "Incorrect output: expected 1,3,2 and got %d,%d,%d; " % (nints, ntstps, nquits)
+            else:
+                score += 10 # for getting all correct
 
         except Exception as e:
             self.ui.notify("Error parsing: %s" % e)
@@ -663,6 +676,10 @@ def SubmissionCleanup(self):
     if self.args.verbose:
         outputText = "\n"*2 + "\n".join(["%s: %s" % (k,v) for k,v in self.grades.iteritems()])
         self.ui.notify(outputText)
+
+    comm = self.ui.promptStr("Leave comment for this submission?", default=None)
+    if comm is not None:
+        self.grades['comments'] += comm
     self.gradebook.submitGrades(self.grades, self.grade_key)
 
     self.ui.notifySubmissionCleanup(self)
