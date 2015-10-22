@@ -22,7 +22,7 @@ class MyAssignment(Assignment):
         # HW1 deadline
         #self.submission_deadline = datetime.datetime.strptime('Wed Oct 7 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
         # HW2 deadline
-        self.submission_deadline = datetime.datetime.strptime('Wed Oct 14 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
+        self.submission_deadline = datetime.datetime.strptime('Wed Oct 21 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
 
         self.temp_filename = os.path.join(submission_dir, '.temp_output_file')
         self.args = args
@@ -61,6 +61,10 @@ class MyAssignment(Assignment):
         # HW2 Callbacks
         #self.addCallback('grade', GradeHandleSignals)
         #self.addCallback('grade', GradeSendSignals)
+
+        # HW3 Callbacks
+        self.addCallback('grade', GradeMyFork)
+        self.addCallback('grade', GradeMyShell)
 
         self.addCallback('cleanup', SubmissionCleanup)
         #self.addCallback('grade', SubmitGrades)

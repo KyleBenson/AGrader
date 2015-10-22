@@ -1,5 +1,5 @@
 import os.path, signal, shutil, sys, time, re, datetime
-
+import subprocess
 ########## Callbacks #########
 
 def SetMainMenuSignal(self):
@@ -286,7 +286,6 @@ def problemNameToGradingKey(problemName):
 def GradeHandleSignals(self):
     import signal
     from time import sleep
-    import subprocess
 
     global SIGNAL_SLEEP_TIME
 
@@ -370,7 +369,6 @@ def GradeHandleSignals(self):
 def GradeSendSignals(self):
     import signal
     from time import sleep
-    import subprocess
 
     global SIGNAL_SLEEP_TIME
 
@@ -448,6 +446,186 @@ def GradeSendSignals(self):
 
     # reset this in case we changed it for problemed submissions
     SIGNAL_SLEEP_TIME = 0.01
+
+def GradeMyFork(self):
+
+    problemName = 'my_fork'
+
+    # total can be up to 30 pts
+    score = 0
+
+    if MakeProblem(self, problemName):
+        score += 5
+    else:
+        return
+
+    proc = None
+
+    def sighandler(signum, frame):
+        if self.args.verbose:
+            self.ui.notify("Killing process!")
+        if proc is not None:
+            proc.kill()
+        else:
+            sys.exit(1)
+
+    signal.signal(signal.SIGINT, sighandler)
+
+    # First, grade them with the default value
+    argValue = 10
+    expectedAnswer = 'A'*argValue + 'B'*argValue + 'C'*argValue + 'D'*argValue
+
+    with open(self.temp_filename + '_%s_%d' % (problemName, argValue), "w") as f:
+        proc = subprocess.Popen("./%s" % problemName, stdout=f)
+
+        #TODO: handle proc not running
+
+        pid = proc.pid
+        proc.wait()
+
+    with open(self.temp_filename + '_%s_%d' % (problemName, argValue)) as f:
+        try:
+            answer = f.readlines()
+            if len(answer) < 1:
+                self.ui.notify("Your output is blank...")
+            elif len(answer) > 1:
+                self.ui.notify("Your output should only have one line!")
+
+            # split string into chars, sort, reassemble to check
+            answer = "".join(sorted(list(answer[0].strip())))
+            if answer == expectedAnswer:
+                score += 15
+            else:
+                self.grades['comments'] += "Your %s output was incorrect. We expected %s (not necessarilly in order) and got %s; ", (problemName, expectedAnswer, answer)
+
+        except Exception as e:
+            self.ui.notify("Error parsing: %s" % e)
+
+            self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+            score = 0
+
+    # Next, grade them with a larger value
+    argValue = 1000
+    expectedAnswer = 'A'*argValue + 'B'*argValue + 'C'*argValue + 'D'*argValue
+
+    with open(self.temp_filename + '_%s_%d' % (problemName, argValue), "w") as f:
+        proc = subprocess.Popen("./%s %d" % (problemName, argValue), stdout=f, shell=True)
+
+        #TODO: handle proc not running
+
+        pid = proc.pid
+        proc.wait()
+
+    with open(self.temp_filename + '_%s_%d' % (problemName, argValue)) as f:
+        try:
+            answer = f.readlines()
+            if len(answer) < 1:
+                self.ui.notify("Your output is blank...")
+            elif len(answer) > 1:
+                self.ui.notify("Your output should only have one line!")
+
+            # split string into chars, sort, reassemble to check
+            answer = "".join(sorted(list(answer[0].strip())))
+            if answer == expectedAnswer:
+                score += 10
+            else:
+                self.grades['comments'] += "Your %s output was incorrect for k=%d. We expected %d total characters and got %d; ", (problemName, argValue, len(expectedAnswer), len(answer))
+
+        except Exception as e:
+            self.ui.notify("Error parsing: %s" % e)
+
+            self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+            score = 0
+
+    self.grades[problemNameToGradingKey(problemName)] = score
+
+def MakeProblem(self, problemName):
+    '''Try to compile the problem using make and the student's
+    specified Makefile, or just use our own if possible.
+    @returns - True if their file compiled successfully, else False
+    '''
+
+    # try using the student's makefile to compile
+    makefilePath = os.path.join(self.submission_dir, "Makefile_%s" % problemName)
+    if os.path.exists(makefilePath):
+        ret = CompileCommand(self, "make -f %s" % makefilePath)
+    else:
+        self.ui.promptBool("STOP! SOMEONE DIDN'T SUBMIT A MAKEFILE!")
+        ret = CompileCommand(self, "gcc %s.c -o %s" % (problemName, problemName))
+
+    if ret != 0:
+        if self.ui.promptBool("Compilation failed; skip assignment? ", default=True):
+            self.grades[problemNameToGradingKey(problemName)] = 0
+            self.grades['comments'] += "Compilation of %s.c failed with code %d" % (problemName, ret)
+            return False
+
+    return True
+
+def GradeMyShell(self):
+
+    problemName = 'my_shell'
+
+    # total can be up to 60 pts
+    score = 0
+    proc = None
+
+    if MakeProblem(self, problemName):
+        score += 10
+    else:
+        return
+
+    def sighandler(signum, frame):
+        if self.args.verbose:
+            self.ui.notify("Killing process!")
+        if proc is not None:
+            proc.kill()
+        else:
+            sys.exit(1)
+
+    signal.signal(signal.SIGINT, sighandler)
+
+    inputScript = os.path.join(self.assignment_dir, "my_shell_script.txt")
+    print inputScript
+    proc = subprocess.Popen("./%s < %s" % (problemName, inputScript), shell=True)
+
+    #TODO: handle proc not running
+
+    pid = proc.pid
+
+    proc.wait()
+
+    # Now, we want to check all the changes that should have been made by their
+    # shell executing the input script and make sure it's all correct
+    if os.path.exists('foo'):
+        self.ui.notify("foo shouldn't exist!")
+        self.grades['comments'] += "%s failed to handle more than one command appropriately; " % problemName
+    elif os.path.exists('baz'):
+        score += 10
+    if os.path.exists('baz/foo/bar'):
+        score += 10
+
+    if os.path.exists('baz/bar'):
+        score += 10
+    if os.path.exists('baz/foo/bar/bar'):
+        score += 5
+
+    if os.path.exists('baz/empty'):
+        score += 5
+    else:
+        self.grades['comments'] += "%s failed to handle empty command appropriately; " % problemName
+
+    if os.path.exists('baz/blah'):
+        self.ui.notify("baz/blah shouldn't exist!")
+        self.grades['comments'] += "%s failed to handle invalid command appropriately; " % problemName
+    else:
+        score += 5
+
+    if os.path.exists('nonsense'):
+        self.ui.notify("dir nonsense shouldn't exist!")
+    else:
+        score += 5
+
+    self.grades[problemNameToGradingKey(problemName)] = score
 
 
 def ViewPart1(self, prompt=True):
