@@ -71,7 +71,8 @@ def FixSource(self):
 
 def CheckSubmissionTime(self):
     #expectedFilenames = ('average', 'compute', self.temp_filename)
-    programs = ['handle_signals', 'send_signals']
+    #programs = ['handle_signals', 'send_signals']
+    programs = ['my_fork', 'my_shell']
     expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
     expectedFilenames.append('.graded')
     expectedFilenames.append('.grade_dict')
@@ -473,11 +474,17 @@ def GradeMyFork(self):
     problemName = 'my_fork'
 
     # total can be up to 30 pts
+    global score # see comment in signal handler below
     score = 0
 
-    if MakeProblem(self, problemName):
+    compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName)
+    if compiledSuccessfully and submittedMakefile and makefileCompiled:
         score += 5
-    else:
+    elif compiledSuccessfully:
+        score += 3
+        self.grades['comments'] += "Makefile_%s did not compile properly on openlab; " % problemName
+    elif not compiledSuccessfully:
+        self.grades[problemName] = 0
         return
 
     proc = None
@@ -487,6 +494,10 @@ def GradeMyFork(self):
             self.ui.notify("Killing process!")
         if proc is not None:
             proc.kill()
+            self.grades['comments'] += "Had to kill your my_fork: maybe it choked on k=1000?; "
+            # This doesn't work in python without making it a global... feature?
+            global score
+            score -= 5
         else:
             sys.exit(1)
 
@@ -496,67 +507,62 @@ def GradeMyFork(self):
     argValue = 10
     expectedAnswer = 'A'*argValue + 'B'*argValue + 'C'*argValue + 'D'*argValue
 
-    with open(self.temp_filename + '_%s_%d' % (problemName, argValue), "w") as f:
-        proc = subprocess.Popen("./%s" % problemName, stdout=f)
+    proc = subprocess.Popen("./%s" % problemName, stdout=subprocess.PIPE)
+    # NOTE: we have to use communicate or the processes' competition
+    # over the same file will cause lost data!
+    answer, stderrdata = proc.communicate()
 
-        #TODO: handle proc not running
-
-        pid = proc.pid
-        proc.wait()
-
-    with open(self.temp_filename + '_%s_%d' % (problemName, argValue)) as f:
+    try:
         try:
-            answer = f.readlines()
-            if len(answer) < 1:
-                self.ui.notify("Your output is blank...")
-            elif len(answer) > 1:
-                self.ui.notify("Your output should only have one line!")
 
             # split string into chars, sort, reassemble to check
-            answer = "".join(sorted(list(answer[0].strip())))
+            answer = "".join(sorted(list(answer.strip())))
+
             if answer == expectedAnswer:
                 score += 15
             else:
-                self.grades['comments'] += "Your %s output was incorrect. We expected %s (not necessarilly in order) and got %s; ", (problemName, expectedAnswer, answer)
+		# if they missed a few of the characters for some reason, partial credit
+                if len(answer) > 0 and answer.replace("A", "").replace("B", "").replace("C", "").replace("D", "") == "":
+		    score += 10
+                self.grades['comments'] += "Your %s output was incorrect. We expected %s (not necessarilly in order) and got %s; " % (problemName, expectedAnswer, answer)
 
         except Exception as e:
             self.ui.notify("Error parsing: %s" % e)
 
             self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
             score = 0
+    except Exception as E:
+        print 'this should never happen'
 
     # Next, grade them with a larger value
     argValue = 1000
     expectedAnswer = 'A'*argValue + 'B'*argValue + 'C'*argValue + 'D'*argValue
 
-    with open(self.temp_filename + '_%s_%d' % (problemName, argValue), "w") as f:
-        proc = subprocess.Popen("./%s %d" % (problemName, argValue), stdout=f, shell=True)
+    proc = subprocess.Popen("./%s %d" % (problemName, argValue), stdout=subprocess.PIPE, shell=True)
+    # NOTE: we have to use communicate or the processes' competition
+    # over the same file will cause lost data!
+    answer, stderrdata = proc.communicate()
 
-        #TODO: handle proc not running
-
-        pid = proc.pid
-        proc.wait()
-
-    with open(self.temp_filename + '_%s_%d' % (problemName, argValue)) as f:
+    try:
         try:
-            answer = f.readlines()
-            if len(answer) < 1:
-                self.ui.notify("Your output is blank...")
-            elif len(answer) > 1:
-                self.ui.notify("Your output should only have one line!")
 
             # split string into chars, sort, reassemble to check
-            answer = "".join(sorted(list(answer[0].strip())))
+            answer = "".join(sorted(list(answer.strip())))
             if answer == expectedAnswer:
                 score += 10
             else:
-                self.grades['comments'] += "Your %s output was incorrect for k=%d. We expected %d total characters and got %d; ", (problemName, argValue, len(expectedAnswer), len(answer))
+		# if they just missed the output from some chars, partial credit
+                if len(answer) > 0 and answer.replace("A", "").replace("B", "").replace("C", "").replace("D", "") == "":
+                    score += 6
+                self.grades['comments'] += "Your %s output was incorrect for k=%d. We expected %d total characters and got %d; " % (problemName, argValue, len(expectedAnswer), len(answer))
 
         except Exception as e:
             self.ui.notify("Error parsing: %s" % e)
 
             self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
             score = 0
+    except Exception as E:
+        print 'this should never happen'
 
     self.grades[problemNameToGradingKey(problemName)] = score
 
@@ -568,45 +574,59 @@ def MakeProblem(self, problemName):
 
     # try using the student's makefile to compile
     makefilePath = os.path.join(self.submission_dir, "Makefile_%s" % problemName)
-    if os.path.exists(makefilePath):
+    submittedMakefile = os.path.exists(makefilePath)
+    compiledSuccessfully = True
+    makefileCompiled = True
+
+    if submittedMakefile:
         ret = CompileCommand(self, "make -f %s" % makefilePath)
-    else:
-        self.ui.promptBool("STOP! SOMEONE DIDN'T SUBMIT A MAKEFILE!")
-        ret = CompileCommand(self, "gcc %s.c -o %s" % (problemName, problemName))
+        if ret != 0:
+            makefileCompiled = False
+    if not submittedMakefile or not makefileCompiled:
+        ret = CompileCommand(self, "gcc -std=c99 %s.c -o %s" % (problemName, problemName))
 
     if ret != 0:
-        if self.ui.promptBool("Compilation failed; skip assignment? ", default=True):
+        compiledSuccessfully = False
+        if self.ui.promptBool("Compilation failed; give them a 0 and skip? ", default=True):
             self.grades[problemNameToGradingKey(problemName)] = 0
-            self.grades['comments'] += "Compilation of %s.c failed with code %d" % (problemName, ret)
-            return False
+            self.grades['comments'] += "Compilation of %s.c failed with code %d; " % (problemName, ret)
 
-    return True
+    return compiledSuccessfully, submittedMakefile, makefileCompiled
 
 def GradeMyShell(self):
 
     problemName = 'my_shell'
 
     # total can be up to 60 pts
+    global score # see comment in signal handler below
     score = 0
-    proc = None
-
-    if MakeProblem(self, problemName):
-        score += 10
-    else:
-        return
 
     def sighandler(signum, frame):
         if self.args.verbose:
             self.ui.notify("Killing process!")
         if proc is not None:
             proc.kill()
+            self.grades['comments'] += "Had to kill your shell: it should end on EOF with an input script!; "
+            # This doesn't work in python without making it a global... feature?
+            global score
+            score -= 5
         else:
             sys.exit(1)
 
     signal.signal(signal.SIGINT, sighandler)
 
+    compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName)
+    if compiledSuccessfully and submittedMakefile and makefileCompiled:
+        score += 10
+    elif compiledSuccessfully:
+        self.grades['comments'] += "Makefile_%s did not compile properly on openlab; " % problemName
+        score += 5
+    elif not compiledSuccessfully:
+        self.grades[problemName] = 0
+        return
+
+
     inputScript = os.path.join(self.assignment_dir, "my_shell_script.txt")
-    print inputScript
     proc = subprocess.Popen("./%s < %s" % (problemName, inputScript), shell=True)
 
     #TODO: handle proc not running
@@ -635,6 +655,7 @@ def GradeMyShell(self):
     else:
         self.grades['comments'] += "%s failed to handle empty command appropriately; " % problemName
 
+    # the following 10 points are free if they did nothing!
     if os.path.exists('baz/blah'):
         self.ui.notify("baz/blah shouldn't exist!")
         self.grades['comments'] += "%s failed to handle invalid command appropriately; " % problemName
@@ -645,6 +666,9 @@ def GradeMyShell(self):
         self.ui.notify("dir nonsense shouldn't exist!")
     else:
         score += 5
+
+    if score <= 20:
+        self.grades['comments'] += "Your shell seems to have failed every command it was given; "
 
     self.grades[problemNameToGradingKey(problemName)] = score
 
@@ -693,9 +717,21 @@ def SubmissionSetup(self):
     self.old_dir = os.getcwd()
     os.chdir(self.submission_dir)
 
+    # for HW3, kill the output folders
+    pathsToKill = ['baz', '.temp_output_file_my_fork_10', '.temp_output_file_my_fork_1000']
+    for ptk in pathsToKill:
+        if os.path.isfile(ptk):
+	    os.remove(ptk)
+        elif os.path.exists(ptk):
+	    shutil.rmtree(ptk)
+
+    #print "Comments:", self.grades['comments']
+    #if self.ui.promptBool("Reset comments?", default=True):
+    #    self.grades['comments'] = ''
+
 def clearFiles(self):
     try:
-        os.remove (self.graded_file)
+        os.remove(self.graded_file)
     except:
         pass
 

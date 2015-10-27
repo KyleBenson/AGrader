@@ -50,6 +50,10 @@ def setup_files(path_to_walk, manifest_file):
     
                 # move this file into the appropriate directory
                 shutil.move(os.path.join(path_to_walk, f), new_filename)
+
+	        # fix the modified time
+	        theTime = int(time_info[f].strftime("%s"))
+                os.utime(new_filename, (theTime, theTime))
     
         if FIX_MOVED_SUBMISSION_TIMES:
             for d in dirs:
