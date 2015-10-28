@@ -135,11 +135,11 @@ def RunCommand(self, program_command, input_script=None):
     if input_script is not None:
         command += " < %s" % input_script
     # piping with tee results in a return value of 0 always!
-    command += ' > %s' % self.temp_filename + '_%s' % problemName
+    command += ' > %s' % self.temp_filename# should be problemName, but not an arg... + '_%s' % program_command
     #command += ' | tee %s' % self.temp_filename + '_%s' % problemName
 
     if self.args.verbose:
-        self.ui.notify(command, '\n')
+        self.ui.notify(command)
 
     # for now, we're just going to assume that we won't make any changes to
     # source code: either it runs or it doesn't!
@@ -165,6 +165,7 @@ def RunCommand(self, program_command, input_script=None):
     #return ret
 
 def GradeAverage(self):
+    problemName = 'average'
     ret = CompileCommand(self, "make -f %s" % os.path.join(self.assignment_dir, "average", "Makefile"))
     if ret != 0:
         self.ui.notify("Compilation failed; skipping assignment...")
@@ -178,7 +179,8 @@ def GradeAverage(self):
 
     # Now for grading: 40 pts possible
     score = 0
-    with open(self.temp_filename + '_%s' % problemName) as f:
+    outputFilename = self.temp_filename# + '_%s' % problemName
+    with open(outputFilename) as f:
         try:
             answer = float(f.readlines()[1].strip())
             if answer == 5.5:
@@ -190,7 +192,7 @@ def GradeAverage(self):
             self.grades['comments'] += "Error parsing average output: %s; " % e
 
     RunCommand(self, "./average %s" % os.path.join(self.assignment_dir, "numbers2.dat"))
-    with open(self.temp_filename + '_%s' % problemName) as f:
+    with open(outputFilename) as f:
         try:
             answer = float(f.readlines()[1].strip())
             # answer should be 502.28
@@ -215,6 +217,8 @@ def GradeAverage(self):
 
 
 def GradeCompute(self):
+    problemName = 'compute'
+    outputFilename = self.temp_filename# + '_%s' % problemName
     ret = CompileCommand(self) # use the makefile in this directory
     if ret != 0:
         if not self.ui.promptBool("Make failed with code %d. Continue anyway? " % ret):
@@ -230,7 +234,7 @@ def GradeCompute(self):
             self.grades['comments'] += "compute returned error code %d during execution with numbers.dat; " % ret
             return
 
-    with open(self.temp_filename + '_%s' % problemName) as f:
+    with open(outputFilename) as f:
         try:
             answers = f.readlines()
             theMax = float(answers[0].strip().split(":")[1])
@@ -252,7 +256,7 @@ def GradeCompute(self):
         self.grades['comments'] += "compute returned error code %d during execution with larger input file; " % ret
 
     else:
-        with open(self.temp_filename + '_%s' % problemName) as f:
+        with open(outputFilename) as f:
             try:
                 answers = f.readlines()
                 theMax = float(answers[0].strip().split(":")[1])
