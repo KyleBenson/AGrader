@@ -21,7 +21,7 @@ class MyAssignment(Assignment):
 
         # HW1 deadline
         #self.submission_deadline = datetime.datetime.strptime('Wed Oct 7 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
-        # HW2 deadline
+        # HW3 deadline
         self.submission_deadline = datetime.datetime.strptime('Wed Oct 21 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
 
         self.temp_filename = os.path.join(submission_dir, '.temp_output_file')
@@ -49,10 +49,7 @@ class MyAssignment(Assignment):
         # Uncomment this to transfer grades from file to Gdata
         #self.addCallback('setup', ReadGradesFromFile)
 
-        self.addCallback('grade', CheckSubmissionTime)
-
-        # Common across most CS143A HW#'s
-        #self.addCallback('grade', ViewPart1)
+        #self.addCallback('grade', CheckSubmissionTime)
 
         # HW1 Callbacks
         #self.addCallback('grade', GradeAverage)
@@ -63,8 +60,14 @@ class MyAssignment(Assignment):
         #self.addCallback('grade', GradeSendSignals)
 
         # HW3 Callbacks
-        self.addCallback('grade', GradeMyFork)
-        self.addCallback('grade', GradeMyShell)
+        #self.addCallback('grade', GradeMyFork)
+        #self.addCallback('grade', GradeMyShell)
+        #self.addCallback('grade', CheckForFork)
+
+        # Common across most CS143A HW#'s
+        # NOTE: this should come last as we only actually view their part1.txt
+        # submission if they didn't get 100 on the others.
+        #self.addCallback('grade', ViewPart1)
 
         self.addCallback('cleanup', SubmissionCleanup)
         #self.addCallback('grade', SubmitGrades)

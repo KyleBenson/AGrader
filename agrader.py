@@ -100,7 +100,7 @@ def ParseArgs(args):
                         help='''Force regrading of submissions''')
 
     # Control UI
-    parser.add_argument('-ui', metavar='interactive', action='store',
+    parser.add_argument('--ui', metavar='interactive', action='store',
                         help='''Change the user interface. Current options are: default(clui), clui, echo, none(echo), off(none)''')
 
     # User preferences

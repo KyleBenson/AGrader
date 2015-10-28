@@ -104,6 +104,13 @@ def ReadGradesFromFile(self):
     myGb = gb(self.ui, self.args)
     grades = myGb.getGrades(self.grade_key)
 
+    #if not grades['comments'].startswith(self.grades['comments']):
+        #if self.ui.promptBool("Comments appear out of sync.  Overwrite with those from file?", default=True):
+            #self.grades['comments'] = grades['comments']
+    #else:
+        #self.grades['comments'] = grades['comments']
+
+
     # NOTE: the two if statements are hacks for CS143A-HW2 that allow us to do
     # some funny merging of file grades to Gdata with part1 already graded
 
@@ -117,6 +124,7 @@ def ReadGradesFromFile(self):
     ## save scores from part1
     #if 'part1' in self.grades.keys() and self.grades['part1'] is not None:
         #grades['part1'] = self.grades['part1']
+    #self.grades['part1'] = grades['part1']
 
     self.grades = grades
 
@@ -669,11 +677,32 @@ def GradeMyShell(self):
     self.grades[problemNameToGradingKey(problemName)] = score
 
 
+def CheckForFork(self):
+    problemName = 'my_fork'
+    os.system("grep fork %s.c" % problemName)
+    if not self.ui.promptBool("Did they use fork?", default=True):
+        self.grades['comments'] += "Failed to use fork in %s!!; "
+
+    problemName = 'my_shell'
+    os.system("grep fork %s.c" % problemName)
+    if not self.ui.promptBool("Did they use fork?", default=True):
+        self.grades['comments'] += "Failed to use fork in %s!!; "
+
+
 def ViewPart1(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
+    try:
+        if self.grades['myfork'] == 30 and self.grades['myshell'] == 60:
+            self.ui.notify("Skipping part1 as they got 100 so far")
+            self.grades['part1'] = 10
+            return
+    except KeyError:
+        self.ui.notifyError("UNEXPECTED: didn't find grades for other programs!")
+
     if not prompt or self.ui.promptBool ("View Part1?", default=True):
         os.system('less part1.txt')
     grade = self.ui.promptInt("How many points did they get?", default=10)
+
     if grade != 10 and prompt:
             comment = self.ui.promptStr("Want to leave a comment as to why? ", default=None)
             if comment is not None:
