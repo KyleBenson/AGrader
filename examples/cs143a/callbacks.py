@@ -143,7 +143,8 @@ def RunCommand(self, program_command, input_script=None):
     if input_script is not None:
         command += " < %s" % input_script
     # piping with tee results in a return value of 0 always!
-    command += ' > %s' % self.temp_filename# should be problemName, but not an arg... + '_%s' % program_command
+    # TODO: accept problemName as an arg to avoid this hack?
+    command += ' > %s' % self.temp_filename + '_%s' % program_command.replace("./","")
     #command += ' | tee %s' % self.temp_filename + '_%s' % problemName
 
     if self.args.verbose:
@@ -689,13 +690,103 @@ def CheckForFork(self):
         self.grades['comments'] += "Failed to use fork in %s!!; "
 
 
+def GradeMutexCompute(self):
+    GradePthreadCompute(self, 'mutex_compute', 40)
+
+def GradePthreadCompute(self, problemName='pthread_compute', possibleScore=50):
+
+    global score # see comment in signal handler below
+    score = 0
+
+    compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName)
+    if compiledSuccessfully and submittedMakefile and makefileCompiled:
+        score += 10
+    elif compiledSuccessfully:
+        score += 5
+        self.grades['comments'] += "Makefile_%s did not compile properly on openlab; " % problemName
+    elif not compiledSuccessfully:
+        self.grades[problemName] = 0
+        return
+
+    proc = None
+
+    def sighandler(signum, frame):
+        if self.args.verbose:
+            self.ui.notify("Killing process!")
+        if proc is not None:
+            proc.kill()
+            self.grades['comments'] += "Had to kill your %s manually; " % problemName
+            # This doesn't work in python without making it a global... feature?
+            global score
+            # lose 5 points for having a program that doesn't exit
+            score -= 5
+        else:
+            sys.exit(1)
+
+    signal.signal(signal.SIGINT, sighandler)
+
+    # for each combination of inputs and expected outputs,
+    # we'll run the program and parse the output and build up the score
+    allExpectedAnswers = [[100, 10, 55],
+                          [999, 0, 508],
+                          [1997, 1, 1048],
+                          [999999999, 2, 250000195],
+                          ]
+    inputScripts = ['integers.dat', 'integers2.dat', 'integers_337.dat', 'integers_4.dat']
+    for expectedAnswers, inputScript in zip(allExpectedAnswers, inputScripts):
+        ret = RunCommand(self, "./%s" % problemName, os.path.join(self.assignment_dir, inputScript))
+        if ret != 0:
+            if not self.ui.promptBool("Error (%d) running %s! Continue anyway? " % (ret, problemName), default=True):
+                self.grades[problemNameToGradingKey(problemName)] = 0
+                self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, inputScript)
+                return
+
+        with open(self.temp_filename + '_%s' % problemName) as f:
+            try:
+                answers = f.readlines()
+                theMax = float(answers[0].replace(" ","").strip().split(":")[1])
+                theMin = float(answers[1].replace(" ","").strip().split(":")[1])
+                theAvg = float(answers[2].replace(" ","").strip().split(":")[1])
+
+                if theMax == expectedAnswers[0] and theMin == expectedAnswers[1] and theAvg == expectedAnswers[2]:
+                    score += float(possibleScore - 10)/len(allExpectedAnswers)
+                else:
+                    self.grades['comments'] += "compute output expected %d,%d,%d, got %d,%d,%d; " % tuple(expectedAnswers) + (theMax, theMin, theAvg)
+
+            except Exception as e:
+                self.ui.notify("Error parsing: %s" % e)
+                self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+
+
+    self.grades[problemNameToGradingKey(problemName)] = score
+
+def CheckForPthread(self):
+    problemName = 'pthread_compute'
+    os.system("grep pthread %s.c" % problemName)
+    if not self.ui.promptBool("Did they use pthreads?", default=True):
+        self.grades['comments'] += "Failed to use pthreads in %s!!; "
+        self.grades[problemNameToGradingKey(problemName)] = 0
+
+    problemName = 'mutex_compute'
+    os.system("grep pthread %s.c" % problemName)
+    if not self.ui.promptBool("Did they use pthreads?", default=True):
+        self.grades['comments'] += "Failed to use pthreads in %s!!; "
+        self.grades[problemNameToGradingKey(problemName)] = 0
+
+
 def ViewPart1(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
     try:
-        if self.grades['myfork'] == 30 and self.grades['myshell'] == 60:
-            self.ui.notify("Skipping part1 as they got 100 so far")
-            self.grades['part1'] = 10
-            return
+        # HW3
+        #if self.grades['myfork'] == 30 and self.grades['myshell'] == 60:
+        # HW4
+        if self.grades['pthreadcompute'] == 50 and self.grades['mutexcompute'] == 40:
+            if os.path.exists('part1.txt'):
+                self.ui.notify("Skipping part1 as they got 100 so far")
+                self.grades['part1'] = 10
+                return
+            else:
+                self.ui.notifyError("UNEXPECTED: got 100 on programming but no part1.txt!")
     except KeyError:
         self.ui.notifyError("UNEXPECTED: didn't find grades for other programs!")
 
@@ -705,7 +796,7 @@ def ViewPart1(self, prompt=True):
 
     if grade != 10 and prompt:
             comment = self.ui.promptStr("Want to leave a comment as to why? ", default=None)
-            if comment is not None:
+            if comment:
                 self.grades['comments'] += "Part1: %s; " % comment
     self.grades['part1'] = grade
 
