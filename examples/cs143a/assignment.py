@@ -49,7 +49,7 @@ class MyAssignment(Assignment):
         # Uncomment this to transfer grades from file to Gdata
         #self.addCallback('setup', ReadGradesFromFile)
 
-        self.addCallback('grade', CheckSubmissionTime)
+        #self.addCallback('grade', CheckSubmissionTime)
 
         # HW1 Callbacks
         #self.addCallback('grade', GradeAverage)
@@ -64,15 +64,15 @@ class MyAssignment(Assignment):
         #self.addCallback('grade', GradeMyShell)
         #self.addCallback('grade', CheckForFork)
 
-        # HW3 Callbacks
-        self.addCallback('grade', GradePthreadCompute)
-        self.addCallback('grade', GradeMutexCompute)
-        self.addCallback('grade', CheckForPthread)
+        # HW4 Callbacks
+        #self.addCallback('grade', GradePthreadCompute)
+        #self.addCallback('grade', GradeMutexCompute)
+        #self.addCallback('grade', CheckForPthread)
 
         # Common across most CS143A HW#'s
         # NOTE: this should come last as we only actually view their part1.txt
         # submission if they didn't get 100 on the others.
-        self.addCallback('grade', ViewPart1)
+        #self.addCallback('grade', ViewPart1)
 
         self.addCallback('cleanup', SubmissionCleanup)
         #self.addCallback('grade', SubmitGrades)
