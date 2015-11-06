@@ -72,7 +72,8 @@ def FixSource(self):
 def CheckSubmissionTime(self):
     #expectedFilenames = ('average', 'compute', self.temp_filename)
     #programs = ['handle_signals', 'send_signals']
-    programs = ['my_fork', 'my_shell']
+    #programs = ['my_fork', 'my_shell']
+    programs = ['pthread_compute', 'mutex_compute']
     expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
     expectedFilenames.append('.graded')
     expectedFilenames.append('.grade_dict')
@@ -85,10 +86,14 @@ def CheckSubmissionTime(self):
         #submission_time = submission_time.replace(tzinfo=None)
 
         if submission_time < (self.submission_deadline - datetime.timedelta(days=1)):
-            self.ui.notify("early submission!")
+            msg = "early submission!"
+            self.ui.notify(msg)
+            self.grades['comments'] += msg + '; '
             self.grades['percentage'] = 110
         elif submission_time > self.submission_deadline and submission_time < (self.submission_deadline + datetime.timedelta(days=1)):
-            self.ui.notify("Assignment turned in past deadline, but within grace period!")
+            msg = "Assignment turned in past deadline, but within grace period!"
+            self.ui.notify(msg)
+            self.grades['comments'] += msg + '; '
             self.grades['percentage'] = 80
         elif submission_time > self.submission_deadline:
             self.ui.notify("Assignment turned in WAY past deadline; they get a 0!")
@@ -587,8 +592,11 @@ def MakeProblem(self, problemName):
         ret = CompileCommand(self, "make -f %s" % makefilePath)
         if ret != 0:
             makefileCompiled = False
+        elif not os.path.exists(problemName):
+            self.grades['comments'] += "Makefile_%s did not produce output binary %s; " % (problemName, problemName)
+            makefileCompiled = False
     if not submittedMakefile or not makefileCompiled:
-        ret = CompileCommand(self, "gcc -std=c99 %s.c -o %s" % (problemName, problemName))
+        ret = CompileCommand(self, "gcc -std=c99 -lpthread %s.c -o %s" % (problemName, problemName))
 
     if ret != 0:
         compiledSuccessfully = False
@@ -695,20 +703,25 @@ def GradeMutexCompute(self):
 
 def GradePthreadCompute(self, problemName='pthread_compute', possibleScore=50):
 
+    if not os.path.exists("%s.c" % problemName):
+        self.grades['comments'] += "%s not submitted; " % problemName
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        return
+
     global score # see comment in signal handler below
     score = 0
 
     compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName)
     if compiledSuccessfully and submittedMakefile and makefileCompiled:
         score += 10
+    elif not submittedMakefile and compiledSuccessfully:
+        self.grades['comments'] += "Makefile_%s not submitted!; " % problemName
     elif compiledSuccessfully:
         score += 5
         self.grades['comments'] += "Makefile_%s did not compile properly on openlab; " % problemName
     elif not compiledSuccessfully:
-        self.grades[problemName] = 0
+        self.grades[problemNameToGradingKey(problemName)] = 0
         return
-
-    proc = None
 
     def sighandler(signum, frame):
         if self.args.verbose:
@@ -723,7 +736,7 @@ def GradePthreadCompute(self, problemName='pthread_compute', possibleScore=50):
         else:
             sys.exit(1)
 
-    signal.signal(signal.SIGINT, sighandler)
+    #signal.signal(signal.SIGINT, sighandler)
 
     # for each combination of inputs and expected outputs,
     # we'll run the program and parse the output and build up the score
@@ -736,26 +749,37 @@ def GradePthreadCompute(self, problemName='pthread_compute', possibleScore=50):
     for expectedAnswers, inputScript in zip(allExpectedAnswers, inputScripts):
         ret = RunCommand(self, "./%s" % problemName, os.path.join(self.assignment_dir, inputScript))
         if ret != 0:
-            if not self.ui.promptBool("Error (%d) running %s! Continue anyway? " % (ret, problemName), default=True):
-                self.grades[problemNameToGradingKey(problemName)] = 0
-                self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, inputScript)
-                return
+	    self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, inputScript)
+            if not self.ui.promptBool("Error (%d) running %s! Grade output anyway? " % (ret, problemName), default=True):
+                continue
 
         with open(self.temp_filename + '_%s' % problemName) as f:
             try:
                 answers = f.readlines()
+                print answers, expectedAnswers
                 theMax = float(answers[0].replace(" ","").strip().split(":")[1])
                 theMin = float(answers[1].replace(" ","").strip().split(":")[1])
                 theAvg = float(answers[2].replace(" ","").strip().split(":")[1])
 
-                if theMax == expectedAnswers[0] and theMin == expectedAnswers[1] and theAvg == expectedAnswers[2]:
-                    score += float(possibleScore - 10)/len(allExpectedAnswers)
-                else:
-                    self.grades['comments'] += "compute output expected %d,%d,%d, got %d,%d,%d; " % tuple(expectedAnswers) + (theMax, theMin, theAvg)
+                # give partial credit for each part of the answer they get right
+		pointsPerAnswer = float(possibleScore - 10)/len(allExpectedAnswers)/3.0
+		partsCorrect = 0
+                if theMax == expectedAnswers[0]:
+                    score += pointsPerAnswer
+		    partsCorrect += 1
+		if theMin == expectedAnswers[1]:
+                    score += pointsPerAnswer
+		    partsCorrect += 1
+		if theAvg == expectedAnswers[2]:
+                    score += pointsPerAnswer
+		    partsCorrect += 1
+                if partsCorrect < 3:
+                    self.grades['comments'] += "%s output expected %d,%d,%d, got %.10g,%.10g,%.10g; " % ((problemName,) + tuple(expectedAnswers) + (theMax, theMin, theAvg))
 
             except Exception as e:
                 self.ui.notify("Error parsing: %s" % e)
                 self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+        print "" # newline between executions
 
 
     self.grades[problemNameToGradingKey(problemName)] = score
