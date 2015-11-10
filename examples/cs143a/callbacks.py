@@ -73,10 +73,15 @@ def CheckSubmissionTime(self):
     #expectedFilenames = ('average', 'compute', self.temp_filename)
     #programs = ['handle_signals', 'send_signals']
     #programs = ['my_fork', 'my_shell']
-    programs = ['pthread_compute', 'mutex_compute']
+    #programs = ['pthread_compute', 'mutex_compute']
+    programs = ['que']
     expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
     expectedFilenames.append('.graded')
     expectedFilenames.append('.grade_dict')
+    expectedFilenames.append('part3.txt')
+    expectedFilenames.append('part3_work.pdf')
+    expectedFilenames.append('search.o')
+    expectedFilenames.append('que.o')
 
     for (dirpath, dirnames, filenames) in os.walk(self.submission_dir):
         # skip over compiled files
@@ -143,13 +148,15 @@ def CompileCommand(self, compile_command='make'):
     return ret
 
 
-def RunCommand(self, program_command, input_script=None):
+def RunCommand(self, program_command, input_script=None, output_script=None):
     command = program_command
     if input_script is not None:
         command += " < %s" % input_script
     # piping with tee results in a return value of 0 always!
     # TODO: accept problemName as an arg to avoid this hack?
-    command += ' > %s' % self.temp_filename + '_%s' % program_command.replace("./","")
+    if output_script is None:
+        output_script = self.temp_filename + '_%s' % program_command.replace("./","")
+    command += ' > %s' % output_script
     #command += ' | tee %s' % self.temp_filename + '_%s' % problemName
 
     if self.args.verbose:
@@ -797,6 +804,113 @@ def CheckForPthread(self):
         self.grades['comments'] += "Failed to use pthreads in %s!!; "
         self.grades[problemNameToGradingKey(problemName)] = 0
 
+
+def GradeQue(self, problemName='que', possibleScore=50):
+
+    if not os.path.exists("%s.c" % problemName):
+        self.grades['comments'] += "%s not submitted; " % problemName
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        return
+
+    score = 0
+
+    ret = CompileCommand(self, "make -f %s" % os.path.join(self.args.assignment_dir, "Makefile"))
+    if ret != 0:
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        self.ui.notify("ERROR compiling! %d" % ret)
+        self.grades['comments'] += "gcc returned error %d when compiling %s with Makefile; " % (ret, problemName)
+        return
+
+    # used to calculate the score based on how close it is to right answer
+    def percent_error(actual, expected):
+        return abs(actual - expected)/float(expected)
+
+    # for each combination of inputs and expected outputs,
+    # we'll run the program and parse the output and build up the score
+    allExpectedAnswers = [5931,
+                          141 + 108 + 123,
+                          ]
+    allArgs = ['/usr/share/dict/words',
+               '~/boost/include/boost/wave/grammars/ ~/boost/include/boost/format/ ~/boost/include/boost/signals/']
+    outputFilename = self.temp_filename + '_%s' % "search"
+    for expectedAnswers, args in zip(allExpectedAnswers, allArgs):
+        ret = RunCommand(self, "./search the %s" % args, output_script=outputFilename)
+        if ret != 0:
+            self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, args)
+            if not self.ui.promptBool("Error (%d) running %s! Grade output anyway? " % (ret, problemName), default=True):
+                continue
+
+        with open(outputFilename) as f:
+            try:
+                answers = f.readlines()
+                answer = answers[-1].strip().split(" ")
+                answer = float(answer[1])
+
+                # partial credit for close answers
+                thisPossibleScore = possibleScore/len(allArgs)
+                thisScore = thisPossibleScore - thisPossibleScore * percent_error(answer, expectedAnswers)
+                if self.args.verbose:
+                    self.ui.notify("Scored %f on %s" % (thisScore, args))
+
+                if answer != expectedAnswers:
+                    self.grades['comments'] += "%s output expected %d, got %d; " % (problemName, expectedAnswers, answer)
+
+                score += thisScore
+
+            except Exception as e:
+                self.ui.notify("Error parsing: %s" % e)
+                self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+        print "" # newline between executions
+
+
+    self.grades[problemNameToGradingKey(problemName)] = score
+
+def GradeScheduling(self, problemName='scheduling', possibleScore=40):
+
+    submissionFile = "part3.txt"
+    if not os.path.exists(submissionFile):
+        self.grades['comments'] += "%s not submitted; " % problemName
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        return
+
+    score = 0
+
+    # for each combination of inputs and expected outputs,
+    # we'll parse the submission file and build up the score
+    allExpectedAnswers = [[91.25, 47.5],
+                          [87.5, 43.75],
+                          [83.75, 17.5],
+                          [118.75, 11.25],
+                          [87.5, 43.75],
+                          ]
+    pointsPerAnswer = possibleScore/2.0/len(allExpectedAnswers)
+
+    with open(submissionFile) as f:
+        for expectedAnswers, actualAnswers in zip(allExpectedAnswers, f.readlines()[:len(allExpectedAnswers)]):
+            try:
+                actualAnswers = actualAnswers.replace(" ","").strip().split(",")
+                turnaround, response = (float(actualAnswers[0]), float(actualAnswers[1]))
+
+                if turnaround == expectedAnswers[0]:
+                    score += pointsPerAnswer
+                elif turnaround == expectedAnswers[1]:
+                    self.grades['comments'] += "Scheduling answers in wrong order!; "
+                    score += pointsPerAnswer
+                else:
+                    self.grades['comments'] += "%s output expected %f, got %f; " % (problemName, expectedAnswers[0], turnaround)
+                if response == expectedAnswers[1]:
+                    score += pointsPerAnswer
+                elif response == expectedAnswers[0]:
+                    self.grades['comments'] += "Scheduling answers in wrong order!; "
+                    score += pointsPerAnswer
+                else:
+                    self.grades['comments'] += "%s output expected %f, got %f; " % (problemName, expectedAnswers[1], response)
+
+            except Exception as e:
+                self.ui.notify("Error parsing: %s" % e)
+                self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+
+    self.grades[problemNameToGradingKey(problemName)] = score
 
 def ViewPart1(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
