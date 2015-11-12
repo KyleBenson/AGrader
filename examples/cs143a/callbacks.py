@@ -828,10 +828,10 @@ def GradeQue(self, problemName='que', possibleScore=50):
     # for each combination of inputs and expected outputs,
     # we'll run the program and parse the output and build up the score
     allExpectedAnswers = [5931,
-                          141 + 108 + 123,
+                          312,
                           ]
     allArgs = ['/usr/share/dict/words',
-               '~/boost/include/boost/wave/grammars/ ~/boost/include/boost/format/ ~/boost/include/boost/signals/']
+               '~/boost/include/boost/wave/grammars/* ~/boost/include/boost/format/* ~/boost/include/boost/signals/*']
     outputFilename = self.temp_filename + '_%s' % "search"
     for expectedAnswers, args in zip(allExpectedAnswers, allArgs):
         ret = RunCommand(self, "./search the %s" % args, output_script=outputFilename)
