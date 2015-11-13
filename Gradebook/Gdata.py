@@ -118,7 +118,7 @@ class GdataSpreadsheet(BaseGradebook, Thread):
             # make sure each 'cell' submitted is a string
             try:
                 grades = {k:str(v) for k,v in grades.iteritems()}
-            except Error as e:
+            except Exception as e:
                 if self.args.verbose:
                     self.ui.notifyError(e)
                 self.ui.notifyError("Couldn't convert submitted grade to a string for some reason. Gradebook.Gdata.submitGrades")
