@@ -24,7 +24,9 @@ class MyAssignment(Assignment):
         # HW4 deadline
         #self.submission_deadline = datetime.datetime.strptime('Wed Oct 28 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
         # HW5 deadline
-        self.submission_deadline = datetime.datetime.strptime('Thu Nov 5 16:45:00 2015', "%a %b %d %H:%M:%S %Y")
+        #self.submission_deadline = datetime.datetime.strptime('Thu Nov 5 16:45:00 2015', "%a %b %d %H:%M:%S %Y")
+        # HW6 deadline
+        self.submission_deadline = datetime.datetime.strptime('Wed Nov 11 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
 
         self.temp_filename = os.path.join(submission_dir, '.temp_output_file')
         self.args = args
@@ -72,8 +74,11 @@ class MyAssignment(Assignment):
         #self.addCallback('grade', CheckForPthread)
 
         # HW5 Callbacks
-        self.addCallback('grade', GradeQue)
-        self.addCallback('grade', GradeScheduling)
+        #self.addCallback('grade', GradeQue)
+        #self.addCallback('grade', GradeScheduling)
+
+        # HW6 Callbacks
+        self.addCallback('grade', GradeBanker)
 
         # Common across most CS143A HW#'s
         # NOTE: this should come last as we only actually view their part1.txt

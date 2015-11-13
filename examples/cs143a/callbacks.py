@@ -78,10 +78,12 @@ def CheckSubmissionTime(self):
     expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
     expectedFilenames.append('.graded')
     expectedFilenames.append('.grade_dict')
-    expectedFilenames.append('part3.txt')
-    expectedFilenames.append('part3_work.pdf')
-    expectedFilenames.append('search.o')
-    expectedFilenames.append('que.o')
+
+    #HW5
+    #expectedFilenames.append('part3.txt')
+    #expectedFilenames.append('part3_work.pdf')
+    #expectedFilenames.append('search.o')
+    #expectedFilenames.append('que.o')
 
     for (dirpath, dirnames, filenames) in os.walk(self.submission_dir):
         # skip over compiled files
@@ -90,19 +92,24 @@ def CheckSubmissionTime(self):
         # we (may) need to remove tzinfo as the deadline has no such info
         #submission_time = submission_time.replace(tzinfo=None)
 
-        if submission_time < (self.submission_deadline - datetime.timedelta(days=1)):
-            msg = "early submission!"
+        if submission_time < (self.submission_deadline - datetime.timedelta(days=2)):
+            msg = "early early submission!"
             self.ui.notify(msg)
             self.grades['comments'] += msg + '; '
-            self.grades['percentage'] = 110
-        elif submission_time > self.submission_deadline and submission_time < (self.submission_deadline + datetime.timedelta(days=1)):
-            msg = "Assignment turned in past deadline, but within grace period!"
-            self.ui.notify(msg)
-            self.grades['comments'] += msg + '; '
-            self.grades['percentage'] = 80
-        elif submission_time > self.submission_deadline:
-            self.ui.notify("Assignment turned in WAY past deadline; they get a 0!")
-            self.grades['percentage'] = 0
+            self.grades['percentage'] = 120
+        #if submission_time < (self.submission_deadline - datetime.timedelta(days=1)):
+            #msg = "early submission!"
+            #self.ui.notify(msg)
+            #self.grades['comments'] += msg + '; '
+            #self.grades['percentage'] = 110
+        #elif submission_time > self.submission_deadline and submission_time < (self.submission_deadline + datetime.timedelta(days=1)):
+            #msg = "Assignment turned in past deadline, but within grace period!"
+            #self.ui.notify(msg)
+            #self.grades['comments'] += msg + '; '
+            #self.grades['percentage'] = 80
+        #elif submission_time > self.submission_deadline:
+            #self.ui.notify("Assignment turned in WAY past deadline; they get a 0!")
+            #self.grades['percentage'] = 0
 
 
 def ReadGradesFromFile(self):
@@ -583,24 +590,37 @@ def GradeMyFork(self):
 
     self.grades[problemNameToGradingKey(problemName)] = score
 
-def MakeProblem(self, problemName):
+def MakeProblem(self, problemName, makefileName=None):
     '''Try to compile the problem using make and the student's
     specified Makefile, or just use our own if possible.
     @returns - True if their file compiled successfully, else False
     '''
 
+    # if not explicitly given, set a default value for the Makefile's name
+    if makefileName is None:
+        makefileName = "Makefile_%s" % problemName
+
     # try using the student's makefile to compile
-    makefilePath = os.path.join(self.submission_dir, "Makefile_%s" % problemName)
+    makefilePath = os.path.join(self.submission_dir, makefileName)
     submittedMakefile = os.path.exists(makefilePath)
     compiledSuccessfully = True
     makefileCompiled = True
+
+    binaryName = problemName
+
+    # Should remove output binary if it exists as otherwise we won't catch an
+    # incorrect Makefile submission during regrade
+    if submittedMakefile:
+        os.system("make clean")
+    else:
+        os.remove(binaryName)
 
     if submittedMakefile:
         ret = CompileCommand(self, "make -f %s" % makefilePath)
         if ret != 0:
             makefileCompiled = False
-        elif not os.path.exists(problemName):
-            self.grades['comments'] += "Makefile_%s did not produce output binary %s; " % (problemName, problemName)
+        elif not os.path.exists(binaryName):
+            self.grades['comments'] += "%s did not produce output binary %s; " % (makefileName, problemName)
             makefileCompiled = False
     if not submittedMakefile or not makefileCompiled:
         ret = CompileCommand(self, "gcc -std=c99 -lpthread %s.c -o %s" % (problemName, problemName))
@@ -912,13 +932,79 @@ def GradeScheduling(self, problemName='scheduling', possibleScore=40):
 
     self.grades[problemNameToGradingKey(problemName)] = score
 
+
+def GradeBanker(self, problemName='banker', possibleScore=90):
+
+    if not os.path.exists("%s.c" % problemName):
+        self.grades['comments'] += "%s not submitted; " % problemName
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        return
+
+    score = 0
+    makefilePoints = 10
+    makefileName = 'Makefile'
+
+    compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName, makefileName=makefileName)
+    if compiledSuccessfully and submittedMakefile and makefileCompiled:
+        score += makefilePoints
+    elif not submittedMakefile and compiledSuccessfully:
+        self.grades['comments'] += "%s not submitted!; " % makefileName
+    elif compiledSuccessfully:
+        score += makefilePoints/2.0
+        self.grades['comments'] += "%s did not compile properly on openlab; " % makefileName
+    elif not compiledSuccessfully:
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        return
+
+    # for each combination of inputs and expected outputs,
+    # we'll run the program and parse the output and build up the score
+    allExpectedAnswers = ["safe", "unsafe"
+                          ]
+    inputScripts = ['test_safe.txt', 'test_unsafe.txt']
+    pointsPerAnswer = float(possibleScore - makefilePoints)/len(inputScripts)
+    for expectedAnswers, inputScript in zip(allExpectedAnswers, inputScripts):
+        ret = RunCommand(self, "./%s" % problemName, os.path.join(self.assignment_dir, inputScript))
+        if ret != 0:
+            self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, inputScript)
+            if not self.ui.promptBool("Error (%d) running %s! Grade output anyway? " % (ret, problemName), default=True):
+                continue
+
+        with open(self.temp_filename + '_%s' % problemName) as f:
+            try:
+                answers = f.readlines()
+                answer = answers[-1].strip()
+                if "unsafe state" in answer:
+                    if "unsafe" in inputScript:
+                        score += pointsPerAnswer
+                    else:
+                        self.grades['comments'] += "Your program outputs that script %s is an unsafe state!; " % inputScript
+                        score += pointsPerAnswer/4.0
+                elif "safe state" in answer:
+                    if "unsafe" not in inputScript and "safe" in inputScript:
+                        score += pointsPerAnswer
+                    else:
+                        self.grades['comments'] += "Your program outputs that script %s is a safe state!; " % inputScript
+                        score += pointsPerAnswer/4.0
+                else:
+                    self.grades['comments'] += "There was a problem parsing your output. Couldn't find either 'unsafe state' or 'safe state' in the last line of your output...; "
+
+            except Exception as e:
+                self.ui.notify("Error parsing: %s" % e)
+                self.grades['comments'] += "error parsing %s output: %s; " % (problemName, e)
+        print "" # newline between executions
+
+
+    self.grades[problemNameToGradingKey(problemName)] = score
+
 def ViewPart1(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
     try:
         # HW3
         #if self.grades['myfork'] == 30 and self.grades['myshell'] == 60:
         # HW4
-        if self.grades['pthreadcompute'] == 50 and self.grades['mutexcompute'] == 40:
+        #if self.grades['pthreadcompute'] == 50 and self.grades['mutexcompute'] == 40:
+        # HW5, etc. just check they submitted it
+        if True:
             if os.path.exists('part1.txt'):
                 self.ui.notify("Skipping part1 as they got 100 so far")
                 self.grades['part1'] = 10
