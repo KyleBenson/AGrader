@@ -612,7 +612,7 @@ def MakeProblem(self, problemName, makefileName=None):
     # incorrect Makefile submission during regrade
     if submittedMakefile:
         os.system("make clean")
-    else:
+    elif os.path.exists(binaryName):
         os.remove(binaryName)
 
     if submittedMakefile:
