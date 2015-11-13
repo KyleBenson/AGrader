@@ -92,24 +92,27 @@ def CheckSubmissionTime(self):
         # we (may) need to remove tzinfo as the deadline has no such info
         #submission_time = submission_time.replace(tzinfo=None)
 
-        if submission_time < (self.submission_deadline - datetime.timedelta(days=2)):
-            msg = "early early submission!"
+        # +10% if they submit a day early, -20% if a day late
+        if submission_time < (self.submission_deadline - datetime.timedelta(days=1)):
+            msg = "early submission!"
             self.ui.notify(msg)
             self.grades['comments'] += msg + '; '
-            self.grades['percentage'] = 120
-        #if submission_time < (self.submission_deadline - datetime.timedelta(days=1)):
-            #msg = "early submission!"
+            self.grades['percentage'] = 110
+        elif submission_time > self.submission_deadline and submission_time < (self.submission_deadline + datetime.timedelta(days=1)):
+            msg = "Assignment turned in past deadline, but within grace period!"
+            self.ui.notify(msg)
+            self.grades['comments'] += msg + '; '
+            self.grades['percentage'] = 80
+        elif submission_time > self.submission_deadline:
+            self.ui.notify("Assignment turned in WAY past deadline; they get a 0!")
+            self.grades['percentage'] = 0
+
+        # used this for extra extra credit when giving a deadline extension
+        #if submission_time < (self.submission_deadline - datetime.timedelta(days=2)):
+            #msg = "early early submission!"
             #self.ui.notify(msg)
             #self.grades['comments'] += msg + '; '
-            #self.grades['percentage'] = 110
-        #elif submission_time > self.submission_deadline and submission_time < (self.submission_deadline + datetime.timedelta(days=1)):
-            #msg = "Assignment turned in past deadline, but within grace period!"
-            #self.ui.notify(msg)
-            #self.grades['comments'] += msg + '; '
-            #self.grades['percentage'] = 80
-        #elif submission_time > self.submission_deadline:
-            #self.ui.notify("Assignment turned in WAY past deadline; they get a 0!")
-            #self.grades['percentage'] = 0
+            #self.grades['percentage'] = 120
 
 
 def ReadGradesFromFile(self):
