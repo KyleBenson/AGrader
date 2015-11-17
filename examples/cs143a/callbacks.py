@@ -74,7 +74,8 @@ def CheckSubmissionTime(self):
     #programs = ['handle_signals', 'send_signals']
     #programs = ['my_fork', 'my_shell']
     #programs = ['pthread_compute', 'mutex_compute']
-    programs = ['que']
+    #programs = ['que']
+    programs = ['banker']
     expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
     expectedFilenames.append('.graded')
     expectedFilenames.append('.grade_dict')
@@ -614,7 +615,7 @@ def MakeProblem(self, problemName, makefileName=None):
     # Should remove output binary if it exists as otherwise we won't catch an
     # incorrect Makefile submission during regrade
     if submittedMakefile:
-        os.system("make clean")
+        os.system("make clean 2> /dev/null > /dev/null")
     elif os.path.exists(binaryName):
         os.remove(binaryName)
 
@@ -779,7 +780,7 @@ def GradePthreadCompute(self, problemName='pthread_compute', possibleScore=50):
     for expectedAnswers, inputScript in zip(allExpectedAnswers, inputScripts):
         ret = RunCommand(self, "./%s" % problemName, os.path.join(self.assignment_dir, inputScript))
         if ret != 0:
-	    self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, inputScript)
+            self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, inputScript)
             if not self.ui.promptBool("Error (%d) running %s! Grade output anyway? " % (ret, problemName), default=True):
                 continue
 
@@ -968,7 +969,8 @@ def GradeBanker(self, problemName='banker', possibleScore=90):
     for expectedAnswers, inputScript in zip(allExpectedAnswers, inputScripts):
         ret = RunCommand(self, "./%s" % problemName, os.path.join(self.assignment_dir, inputScript))
         if ret != 0:
-            self.grades['comments'] += "%s returned error code %d during execution with %s; " % (problemName, ret, inputScript)
+            score -= 5
+	    self.grades['comments'] += "%s returned error code %d during execution with %s: -5pts!; " % (problemName, ret, inputScript)
             if not self.ui.promptBool("Error (%d) running %s! Grade output anyway? " % (ret, problemName), default=True):
                 continue
 
