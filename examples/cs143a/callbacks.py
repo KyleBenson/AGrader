@@ -70,19 +70,22 @@ def FixSource(self):
                                 self.run_file]))
 
 def CheckSubmissionTime(self):
+
+    # We need to figure out the names of various files that will be generated
+    # by the submission and ignore them: binary files, outputs, etc.
+
     #expectedFilenames = ('average', 'compute', self.temp_filename)
     #programs = ['handle_signals', 'send_signals']
     #programs = ['my_fork', 'my_shell']
     #programs = ['pthread_compute', 'mutex_compute']
     #programs = ['que']
-    programs = ['banker']
+    #programs = ['banker']
+    programs = ['myls', 'mydu']
     expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
     expectedFilenames.append('.graded')
     expectedFilenames.append('.grade_dict')
 
     #HW5
-    #expectedFilenames.append('part3.txt')
-    #expectedFilenames.append('part3_work.pdf')
     #expectedFilenames.append('search.o')
     #expectedFilenames.append('que.o')
 
@@ -1000,6 +1003,78 @@ def GradeBanker(self, problemName='banker', possibleScore=90):
 
 
     self.grades[problemNameToGradingKey(problemName)] = score
+
+def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls -lLR"):
+
+    if not os.path.exists("%s.c" % problemName):
+        self.grades['comments'] += "%s not submitted; " % problemName
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        return
+
+    makefilePoints = 5
+    attemptPoints = possibleScore/2
+    score = attemptPoints
+    makefileName = 'Makefile_%s' % problemName
+
+    compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName, makefileName=makefileName)
+    if compiledSuccessfully and submittedMakefile and makefileCompiled:
+        score += makefilePoints
+    elif not submittedMakefile and compiledSuccessfully:
+        self.grades['comments'] += "%s not submitted!; " % makefileName
+    elif compiledSuccessfully:
+        score += makefilePoints/2.0
+        self.grades['comments'] += "%s did not compile properly on openlab; " % makefileName
+    elif not compiledSuccessfully:
+        self.grades[problemNameToGradingKey(problemName)] = 0
+        return
+
+    # for each combination of inputs and expected outputs,
+    # we'll run the program and parse the output and build up the score
+    inputArgs = ['/etc', '/var/www']
+    pointsPerAnswer = float(possibleScore - makefilePoints - attemptPoints)/len(inputArgs)
+    outputFilename = os.path.join(self.assignment_dir, self.temp_filename)
+    expectedOutputFilename = outputFilename + "_expected"
+
+    for inputArg in inputArgs:
+        # NOTE: we bit shift the return by one byte as the return code is actually
+        # in the second byte
+        ret = os.system("./%s %s > %s" % (problemName, inputArg, outputFilename)) >> 8
+        if ret != 0:
+            score -= 5
+            self.grades['comments'] += "%s returned error code %d during execution with %s: -5pts!; " % (problemName, ret, inputScript)
+            if not self.ui.promptBool("Error (%d) running %s! Grade output anyway? " % (ret, problemName), default=True):
+                continue
+
+        # this command removes the '.' that comes after the file mode bits
+        # referring to some SELinux context
+        expectedCommand = "%s %s | sed 's/^\(.[-rwx]\{9\}\)[ \.]/\\1 /' > %s" % (shellCommand, inputArg, expectedOutputFilename)
+        ret = os.system(expectedCommand) >> 8
+        if ret != 0:
+            self.ui.notifyError("Error executing %s! Quit?" & expectedCommand)
+
+        # If their program passes the first diff, they get extra credit.
+        # Otherwise, we'll run diff and ignore whitespace and newlines,
+        # manually determining how many points they lost.
+        ret = os.system("diff %s %s > /dev/null" % (outputFilename, expectedOutputFilename)) >> 8
+        if ret == 0 or self.ui.promptBool("Did their output match perfectly?", default=False):
+            self.ui.notify("Output matches perfectly!")
+            self.grades['comments'] += "%s output matches perfectly: +5 points!; " % problemName
+            score += 5 + pointsPerAnswer
+        else:
+            ret = os.system("diff -I GMT -I '????' -I 'mail-' '*.repo' -wB %s %s | less" % (outputFilename, expectedOutputFilename)) >> 8
+            score += pointsPerAnswer - self.ui.promptInt("How many points did they lose?", default=0)
+            comment = self.ui.promptStr("Want to leave a comment as to why? ", default=None)
+            if comment:
+                self.grades['comments'] += "%s: %s; " % (problemName, comment)
+
+        print "" # newline between executions
+
+    os.remove(expectedOutputFilename)
+
+    self.grades[problemNameToGradingKey(problemName)] = score
+
+def GradeMyDu(self, problemName='mydu', possibleScore=40, shellCommand='du'):
+    GradeMyLs(self, problemName, possibleScore, shellCommand)
 
 def ViewPart1(self, prompt=True):
     # open source files with less (I like to use the syntax highlighting lesspipe add-on)
