@@ -83,13 +83,13 @@ class MyAssignment(Assignment):
         #self.addCallback('grade', GradeBanker)
 
         # HW7 Callbacks
-        self.addCallback('grade', GradeMyLs)
-        self.addCallback('grade', GradeMyDu)
+        #self.addCallback('grade', GradeMyLs)
+        #self.addCallback('grade', GradeMyDu)
 
         # Common across most CS143A HW#'s
         # NOTE: this should come last as we only actually view their part1.txt
         # submission if they didn't get 100 on the others.
-        self.addCallback('grade', ViewPart1)
+        #self.addCallback('grade', ViewPart1)
 
         self.addCallback('cleanup', SubmissionCleanup)
         #self.addCallback('grade', SubmitGrades)

@@ -97,6 +97,13 @@ def CheckSubmissionTime(self):
         #submission_time = submission_time.replace(tzinfo=None)
 
         # +10% if they submit a day early, -20% if a day late
+
+        # used this for extra extra credit when giving a deadline extension
+        #if submission_time < (self.submission_deadline - datetime.timedelta(days=2)):
+            #msg = "early early submission!"
+            #self.ui.notify(msg)
+            #self.grades['comments'] += msg + '; '
+            #self.grades['percentage'] = 120
         if submission_time < (self.submission_deadline - datetime.timedelta(days=1)):
             msg = "early submission!"
             self.ui.notify(msg)
@@ -110,13 +117,6 @@ def CheckSubmissionTime(self):
         elif submission_time > self.submission_deadline:
             self.ui.notify("Assignment turned in WAY past deadline; they get a 0!")
             self.grades['percentage'] = 0
-
-        # used this for extra extra credit when giving a deadline extension
-        #if submission_time < (self.submission_deadline - datetime.timedelta(days=2)):
-            #msg = "early early submission!"
-            #self.ui.notify(msg)
-            #self.grades['comments'] += msg + '; '
-            #self.grades['percentage'] = 120
 
 
 def ReadGradesFromFile(self):
@@ -1004,7 +1004,7 @@ def GradeBanker(self, problemName='banker', possibleScore=90):
 
     self.grades[problemNameToGradingKey(problemName)] = score
 
-def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls -lLR"):
+def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls -lLR %s"):
 
     if not os.path.exists("%s.c" % problemName):
         self.grades['comments'] += "%s not submitted; " % problemName
@@ -1030,7 +1030,7 @@ def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls 
 
     # for each combination of inputs and expected outputs,
     # we'll run the program and parse the output and build up the score
-    inputArgs = ['/etc', '/var/www']
+    inputArgs = ['/bin', '/var/www']
     pointsPerAnswer = float(possibleScore - makefilePoints - attemptPoints)/len(inputArgs)
     outputFilename = os.path.join(self.assignment_dir, self.temp_filename)
     expectedOutputFilename = outputFilename + "_expected"
@@ -1041,13 +1041,13 @@ def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls 
         ret = os.system("./%s %s > %s" % (problemName, inputArg, outputFilename)) >> 8
         if ret != 0:
             score -= 5
-            self.grades['comments'] += "%s returned error code %d during execution with %s: -5pts!; " % (problemName, ret, inputScript)
+            self.grades['comments'] += "%s returned error code %d during execution with %s: -5pts!; " % (problemName, ret, inputArg)
             if not self.ui.promptBool("Error (%d) running %s! Grade output anyway? " % (ret, problemName), default=True):
                 continue
 
         # this command removes the '.' that comes after the file mode bits
         # referring to some SELinux context
-        expectedCommand = "%s %s | sed 's/^\(.[-rwx]\{9\}\)[ \.]/\\1 /' > %s" % (shellCommand, inputArg, expectedOutputFilename)
+        expectedCommand = "%s | sed 's/^\(.[-rwsx]\{9\}\)[ \.]/\\1 /' > %s" % (shellCommand % inputArg, expectedOutputFilename)
         ret = os.system(expectedCommand) >> 8
         if ret != 0:
             self.ui.notifyError("Error executing %s! Quit?" & expectedCommand)
@@ -1056,13 +1056,14 @@ def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls 
         # Otherwise, we'll run diff and ignore whitespace and newlines,
         # manually determining how many points they lost.
         ret = os.system("diff %s %s > /dev/null" % (outputFilename, expectedOutputFilename)) >> 8
+        if ret != 0:
+            os.system("diff -I GMT -I '????' -I 'mail-' -I '*.repo' -wB %s %s | less" % (outputFilename, expectedOutputFilename)) >> 8
         if ret == 0 or self.ui.promptBool("Did their output match perfectly?", default=False):
             self.ui.notify("Output matches perfectly!")
             self.grades['comments'] += "%s output matches perfectly: +5 points!; " % problemName
             score += 5 + pointsPerAnswer
         else:
-            ret = os.system("diff -I GMT -I '????' -I 'mail-' '*.repo' -wB %s %s | less" % (outputFilename, expectedOutputFilename)) >> 8
-            score += pointsPerAnswer - self.ui.promptInt("How many points did they lose?", default=0)
+            score += pointsPerAnswer - self.ui.promptInt("How many points did they lose (%d total)?" % pointsPerAnswer, default=0)
             comment = self.ui.promptStr("Want to leave a comment as to why? ", default=None)
             if comment:
                 self.grades['comments'] += "%s: %s; " % (problemName, comment)
@@ -1073,7 +1074,7 @@ def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls 
 
     self.grades[problemNameToGradingKey(problemName)] = score
 
-def GradeMyDu(self, problemName='mydu', possibleScore=40, shellCommand='du'):
+def GradeMyDu(self, problemName='mydu', possibleScore=40, shellCommand='du %s | sort -n'):
     GradeMyLs(self, problemName, possibleScore, shellCommand)
 
 def ViewPart1(self, prompt=True):
