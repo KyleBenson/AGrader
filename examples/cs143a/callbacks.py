@@ -597,7 +597,7 @@ def GradeMyFork(self):
 
     self.grades[problemNameToGradingKey(problemName)] = score
 
-def MakeProblem(self, problemName, makefileName=None):
+def MakeProblem(self, problemName, makefileName=None, compileCommandStr="gcc -std=c99 -lpthread %s.c -o %s"):
     '''Try to compile the problem using make and the student's
     specified Makefile, or just use our own if possible.
     @returns - True if their file compiled successfully, else False
@@ -630,7 +630,7 @@ def MakeProblem(self, problemName, makefileName=None):
             self.grades['comments'] += "%s did not produce output binary %s; " % (makefileName, problemName)
             makefileCompiled = False
     if not submittedMakefile or not makefileCompiled:
-        ret = CompileCommand(self, "gcc -std=c99 -lpthread %s.c -o %s" % (problemName, problemName))
+        ret = CompileCommand(self, compileCommandStr % (problemName, problemName))
 
     if ret != 0:
         compiledSuccessfully = False
@@ -1016,7 +1016,7 @@ def GradeMyLs(self, problemName='myls', possibleScore=50, shellCommand="/bin/ls 
     score = attemptPoints
     makefileName = 'Makefile_%s' % problemName
 
-    compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName, makefileName=makefileName)
+    compiledSuccessfully, submittedMakefile, makefileCompiled = MakeProblem(self, problemName, makefileName=makefileName, compileCommandStr="gcc %s.c -o %s")
     if compiledSuccessfully and submittedMakefile and makefileCompiled:
         score += makefilePoints
     elif not submittedMakefile and compiledSuccessfully:
