@@ -78,23 +78,23 @@ class BasePromptUI(object):
             return self.promptType(__optionsCheck, msg, 'Entry not found.' if err_msg is None else err_msg,
                                    default=default)
 
-      def promptIndex(self, options, msg=None, sep=None):
+      def promptIndex(self, options, msg=None, sep=None, default=None):
             if sep is None:
                   sep = (self.newline + '  %s: ')
 
             if msg is None:
                   msg = ''.join(['Please enter the integer index of which of the following options you want:', self.newline,
-                                 sep.join([''] + options) % tuple(range(1, len(options) + 1)),
+                                 sep.join([''] + options) % tuple(range(0, len(options))),
                                  self.newline, 'Enter choice: '])
 
             def __IdxCheck(value, length=len(options)):
                   idx = int(value)
-                  if idx < 1 or idx > length:
+                  if idx < 0 or idx >= length:
                         raise ValueError
                   else:
                         return idx
 
-            return self.promptType(__IdxCheck, msg, 'Please enter a valid index.')
+            return self.promptType(__IdxCheck, msg, 'Please enter a valid index.', default=default)
 
       def promptBool(self, msg=None, default=None):
             if not msg:
