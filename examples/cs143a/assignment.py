@@ -28,7 +28,11 @@ class MyAssignment(Assignment):
         # HW6 deadline
         #self.submission_deadline = datetime.datetime.strptime('Wed Nov 11 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
         # HW7 deadline
-        self.submission_deadline = datetime.datetime.strptime('Fri Nov 20 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
+        #self.submission_deadline = datetime.datetime.strptime('Fri Nov 20 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
+        # HW8 deadline
+        #self.submission_deadline = datetime.datetime.strptime('Wed Nov 25 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
+        # HW9 deadline
+        self.submission_deadline = datetime.datetime.strptime('Wed Dec 2 16:30:00 2015', "%a %b %d %H:%M:%S %Y")
 
         self.temp_filename = os.path.join(submission_dir, '.temp_output_file')
         self.args = args
@@ -55,7 +59,7 @@ class MyAssignment(Assignment):
         # Uncomment this to transfer grades from file to Gdata
         #self.addCallback('setup', ReadGradesFromFile)
 
-        self.addCallback('grade', CheckSubmissionTime)
+        #self.addCallback('grade', CheckSubmissionTime)
 
         # HW1 Callbacks
         #self.addCallback('grade', GradeAverage)
@@ -90,6 +94,7 @@ class MyAssignment(Assignment):
         # NOTE: this should come last as we only actually view their part1.txt
         # submission if they didn't get 100 on the others.
         #self.addCallback('grade', ViewPart1)
+        #self.addCallback('grade', ViewFiles)
 
         self.addCallback('cleanup', SubmissionCleanup)
         #self.addCallback('grade', SubmitGrades)

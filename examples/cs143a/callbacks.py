@@ -80,8 +80,9 @@ def CheckSubmissionTime(self):
     #programs = ['pthread_compute', 'mutex_compute']
     #programs = ['que']
     #programs = ['banker']
-    programs = ['myls', 'mydu']
-    expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
+    #programs = ['myls', 'mydu']
+    #expectedFilenames = programs + [os.path.split(self.temp_filename)[1] + '_%s' % p for p in programs]
+    expectedFilenames = []
     expectedFilenames.append('.graded')
     expectedFilenames.append('.grade_dict')
 
@@ -1104,6 +1105,55 @@ def ViewPart1(self, prompt=True):
             if comment:
                 self.grades['comments'] += "Part1: %s; " % comment
     self.grades['part1'] = grade
+
+
+def ViewFiles(self, possibleScore=100):
+    '''View submitted files using the 'open' command to handle different formats.
+    Prompts user for choice of files to view (if > 1) to handle different names.'''
+
+    # get all non-hidden files that student submitted
+    files = [f for f in os.listdir('.') if not f.startswith('.')]
+    # then add a special option to beginning for being done with viewing files
+    options = ["DONE"]
+    options.extend(files)
+    if len(options) == 1:
+        self.ui.notifyError("No user-submitted files in this directory! Quit?")
+
+    # give user chance to work through all files
+    done = False
+    pointsDeducted = 0
+    while not done:
+        # prompt user for index if multiple options, otherwise just view the
+        # only file and then leave this submission
+        if len(options) > 2:
+            #msg = "Choose which file to view, or DONE if finished"
+            whichItem = self.ui.promptIndex(options, default=0)
+        else:
+            whichItem = 1
+            done = True
+
+        if whichItem == 0:
+            done = True
+        else:
+            filename = options[whichItem]
+            # NOTE: we use single quotes around filenames in case the name has
+            # spaces in it
+            if filename.endswith('.txt'):
+                os.system("less '%s'" % filename)
+            else:
+                os.system("open '%s'" % filename)
+
+            # ask for points lost and prompt for a reason if any
+            thisDeduction = self.ui.promptInt("How many points did they lose?", default=0)
+            pointsDeducted += thisDeduction
+            if thisDeduction > 0:
+                comment = self.ui.promptStr("Want to leave a comment as to why? ", default=None)
+                if comment:
+                    self.grades['comments'] += "-%dpts: %s; " % (thisDeduction, comment)
+
+    grade = possibleScore - pointsDeducted
+
+    self.grades['score'] = grade
 
 
 def ViewSource(self, prompt=True):
