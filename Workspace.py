@@ -95,8 +95,8 @@ class Workspace(AgraderWorkflow):
 
                 try:
                     module = __import__(modname[:-3])
-                except ImportError:
-                    self.ui.notifyError("Problem importing file %s" % modname)
+                except ImportError as e:
+                    self.ui.notifyError("Problem importing file %s" % ("%s: %s" % (modname, e) if self.args.verbose else modname))
                     continue
                 finally:    # always restore the real path
                     path[:] = oldpath
