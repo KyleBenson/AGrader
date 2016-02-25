@@ -11,26 +11,25 @@ from datetime import timedelta
 # SET USER INTERFACES
 # choose which user interface and gradebook connector you want to use
 # make sure to use the 'as' keyword so Agrader can reference it properly
-sys.path.append('~/repos/AGrader')
-#from AGrader.Assignment import Assignment
-#from AGrader.Workspace import Workspace
-from Assignment import Assignment
-from Workspace import Workspace
+#sys.path.append('/Users/kyle/repos/')
+from AGrader.Assignment import Assignment
+from AGrader.Workspace import Workspace
 
 class MyAssignment(Assignment):
-    
+    #NOTE: we are not checking source code or if they submitted on time here
+
     def __init__(self, submission, args):
         super(MyAssignment, self).__init__()
 
         # get workspace from package
         workspace = Workspace.GetWorkspace()
 
-        self.submission_deadline = time.strptime('Fri Jun 7 09:00:00 2013')
-        self.grace_period = timedelta(hours=4)
+        #self.submission_deadline = time.strptime('Fri Jun 7 09:00:00 2013')
+        #self.grace_period = timedelta(hours=4)
 
         self.args = args
         self.submission = submission
-        self.expected_output_filename = 'expected_output.txt'
+        self.expected_output_filename = os.path.join(self.args.assignment_dir, 'expected_output.txt')
         #self.expected_output_filename = 'expected_output_with_error.txt' # there was a bug in input so this ignored it
         #self.expected_output_filename = 'expected_output_groups.txt'
 
@@ -49,6 +48,14 @@ class MyAssignment(Assignment):
             self.grades = self.gradebook.getGrades(self.grade_key)
         else:
             self.grades = {}
+        # need to make this an empty string so we can append to it
+        if self.grades['comments'] is None:
+            self.grades['comments'] = ''
+        # need to make these empty strings so a "None" doesn't appear
+        if self.grades['manualgradingneeded'] is None:
+            self.grades['manualgradingneeded'] = ''
+        if self.grades['latepenalty'] is None:
+            self.grades['latepenalty'] = ''
 
         # if returned grades are None, this submission isn't present in the roster
         if self.grades is None:
@@ -57,21 +64,20 @@ class MyAssignment(Assignment):
 
         # store possible points for each part of the assignment here
         self.possible_points = {}
-        
+
         #source code info
-        self.possible_points['source_code'] = 2.5
-        self.possible_points['output'] = 100
-        self.source_dir = os.path.join(args.assignment_dir, 'sources', username)
+        self.possible_points['output'] = 231
+        #self.source_dir = os.path.join(args.assignment_dir, 'sources', username)
 
-        # Callbacks
-        # import example callbacks for this class
-        from AGrader.examples.cs143b import cs143b_callbacks
+        # need to import callbacks from this directory
+        sys.path.append(args.assignment_dir)
+        from AGrader.examples.cs143b.cs143b_callbacks import *
 
-        self.addCallback('setup', cs143b_callbacks.SubmissionSetup)
-        #self.addCallback('grade', cs143b_callbacks.GradeMultiTestOutputOutput) #process simulator project
-        self.addCallback('grade', cs143b_callbacks.GradeFilesystemProjectOutput)
-        self.addCallback('grade', cs143b_callbacks.ViewSource)
-        self.addCallback('cleanup', cs143b_callbacks.SubmissionCleanup)
+        self.addCallback('setup', SubmissionSetup)
+        self.addCallback('grade', GradeProcessSimulatorProjectOutput) #process simulator project
+        #self.addCallback('grade', cs143b_callbacks.GradeFilesystemProjectOutput)
+        #self.addCallback('grade', cs143b_callbacks.ViewSource)
+        self.addCallback('cleanup', SubmissionCleanup)
 
 def SubmissionGenerator(args):
     '''
@@ -118,7 +124,7 @@ def TestGenerator():
     for sub in SubmissionGenerator(args):
         print sub.name
 
-test_submission = 'tcathers'
+test_submission = 'kebenson'
 def TestParseOutput():
     from AGrader.examples.cs143b import cs143b_callbacks
     tests = cs143b_callbacks.ParseOutput('expected_output.txt')
@@ -136,7 +142,7 @@ def TestGradeOutput():
     #create blank object
     from AGrader.examples.cs143b import cs143b_callbacks
     assignment = lambda:0
-    assignment.filename = 'submissions/tcathers'
+    assignment.filename = 'submissions/%s' % test_submission
     assignment.expected_output_filename = 'expected_output.txt'
     assignment.grades = {}
     assignment.ui = AGrader.Workspace.Workspace.GetWorkspace().ui

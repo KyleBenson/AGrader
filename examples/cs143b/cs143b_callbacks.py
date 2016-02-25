@@ -18,7 +18,7 @@ def SetMainMenuSignal(self):
                    'Run']
 
         while True:
-            command = instance.ui.promptList(options, default=options[0])
+            command = instance.ui.promptOptions(options, default=options[0])
 
             if command == 'Quit':
                 exit(0)
@@ -49,7 +49,7 @@ def CorrectGrades(self):
 
     while True:
         self.ui.ShowGrades(grades)
-        option = self.ui.promptList(sorted(grades.keys()), "Which grades would you like to correct? Leave blank when done.\n", default='')
+        option = self.ui.promptOptions(sorted(grades.keys()), "Which grades would you like to correct? Leave blank when done.\n", default='')
         print option
         if not option:
             break
@@ -105,105 +105,74 @@ def ViewSource(self, prompt=True):
         if not found_source:
             penalty = self.possible_points['source_code']
         else:
-            penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)      
+            penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)
     elif found_source:
         penalty = self.ui.promptFloat("Did they lose any points for source code? ", default=0)
     self.grades['sourcecode'] = self.possible_points['source_code'] - penalty
 
 def ParseOutput(fname):
-    tests = []
-    # to find  the boundary between tests, look for 'init is running'
-    # but that string could appear in multiple lines at once, possibly with a newline in between
-    # so keep a flag that tells us when we're inside a test or when we're at it's boundary
-    # note that we start out with no tests present and so the first occurrence of 'init is running' signals the start of the first test boundary
-    inside_test = True
+    # to find  the boundary between tests, look for a newline
     with open(fname) as f:
-        # add each line to the current test
-        #    after massaging the line (removing newlines, lowercasing everything, etc.)
-        file_lines = f.readlines()
-        
-        # trim leading newlines
-        while file_lines[0] == '\n':
-            file_lines = file_lines[1:]
-        
-        # go through once to see if they use 'init'
-        uses_inits = False
+        # start by removing blank lines
+        file_lines = [line for line in f.readlines() if len(line) > 1]
+        # then change init and error to single-character codes and trim some
+        # other garbage while at it
+        file_lines = [line.lower().replace('\t','').strip().replace('init', '1').replace('error', '~') for line in file_lines]
+        # now turn each line into a string of cases (no spaces)
+        file_lines = [line.replace(' ', '') for line in file_lines]
 
-        for line in file_lines:
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
-            if 'init' in line:
-                uses_inits = True
-                break
+        # trim leading init since example didn't have it
+        if file_lines[0].startswith('1'):
+            file_lines[0] = file_lines[0][1:]
 
-        for line in file_lines:
-            # hack to make sure only the word error appears in a line
-            # since that's what the students were told they could do
-            if 'error' in line:
-                line = 'error'
-
-            #remove all whitespace and lowercase, as well as periods
-            #also remove the phrase 'is running' since the expected tests don't have it
-            line = line.replace(' ', '').replace('\t','').lower().replace('isrunning','').replace('.','').replace('\n','').replace('process','')
-
-            #ignore the 'process terminated' message that some people put at the end.  someone misspelled terminated so I truncated it...
-            if 'term' in line:
-                continue
-
-            # increment the test # when we reach the end of one
-            # but only if we were previously inside a test (or at the very beginning) so as to avoid adding extra tests that aren't really there
-            # this is the start of a new test
-            if uses_inits and 'init' in line and inside_test:
-                tests.append([])
-                inside_test = False
-            # if they didn't use the 'init' output, let's assume they at least gave us a newline...
-            elif not uses_inits and line == '' and inside_test:
-                tests.append([])
-                inside_test = False
-            # ignore newlines
-            elif not line:
-                continue
-            # this is a line inside the test
-            elif 'init' not in line:
-                inside_test = True
-            else:
-                continue
-
-            # add this line to the last test
-            if inside_test:
-                if not len(tests):
-                    self.ui.notifyError("No subtest was ever added to list of tests!")
-                    tests.append([])
-                tests[-1].append(line)
-
-    return tests
+    return file_lines
 
 def PrintListDifference(self, expected, actual, max_len=20):
     '''
-    Prints the difference between two lists.  max_len argument (default = 20) determines space between first and second lists.
-    Returns a number representing how different they are (currently the # lines that differ).  
+    Prints the difference between two lists of strings.  max_len argument (default = 20) determines space between first and second lists.
+    Returns a number representing how different they are (currently the # chars that differ).
     !!max_len currently unimplemented!!
     '''
     self.ui.notify("Expected vv but got vv")
 
     total_checked = total_wrong = 0
 
+    # Check for early crashes, exits, etc. and penalize for them by
+    # subtracting points for all tests beyond the last line present
+    # (the chars in that line missed will be accounted for later)
+    lines_missing = len(expected) - len(actual)
+    if lines_missing > 0:
+        total_wrong += len(''.join(expected[len(actual):]))
+        self.ui.notify("Last %d lines missing, lost %d points" % (lines_missing, total_wrong))
+
     for exp, act in zip(expected, actual):
-        if exp != act:
+        # check if they didn't finish a test case
+        if len(act) < len(exp):
+            this_wrong = len(exp) - len(act)
+            total_wrong += this_wrong
+            self.grades['comments'] += "test %d missed last %d outputs; " % (total_checked, this_wrong)
+
+        line_wrong = False
+
+        # actually check each character
+        for expChar, actChar in zip(exp, act):
+            if expChar != actChar:
+                if expChar == '1':
+                    expChar = 'init'
+                if expChar == '~':
+                    expChar = 'error'
+                if actChar == '1':
+                    actChar = 'init'
+                if actChar == '~':
+                    actChar = 'error'
+                total_wrong += 1
+                line_wrong = True
+
+        if line_wrong:
+            self.grades['comments'] += "test %d exp %s, got %s; " % (total_checked, exp, act)
             self.ui.notify('line %d wrong: %s %s' % (total_checked, exp, act))
-            total_wrong += 1
-            #self.ui.notify(('%-' + str(max_len) + 's %s') % (exp, act))
         total_checked += 1
-    
-    #check here for lists of unequal length
-    longer_list_len = max(len(expected), len(actual))
-    if longer_list_len > total_checked:
-        longer_list = expected if len(expected) == longer_list_len else actual
-        
-        #print the remaining lines
-        for val in longer_list[total_checked:]:
-            self.ui.notify('unexpected value in %s: ' % ('expected' if longer_list is expected else 'actual') + str(val))
-            total_wrong += 1
-        
+
     return total_wrong
 
 def GradeMultiTestOutput(self):
@@ -216,34 +185,29 @@ def GradeMultiTestOutput(self):
     tests = ParseOutput(self.submission)
     expected_tests = ParseOutput(self.expected_output_filename)
 
-    #configure scoring
-    total_score = 0
-    score_per_test = self.possible_points['output']/float(len(expected_tests))
-    
-    #go through each test that was run one by one
-    #they're a pair at a time since one is the expected output and one is the student's submission
+    total_score = self.possible_points['output']
 
-    tests_done = 0
-    for test, exp_test in zip(tests, expected_tests):
-        if test != exp_test:
-            # show what was wrong first
-            # by default, and for non-interactive grading, we subtract one point for each line wrong, to a minimum of 0
-            # NOTE the hack for doing groups and changing pts wrong per line wrong
-            points_off = PrintListDifference(self, exp_test, test)
-            if 'group' in self.expected_output_filename:
-                points_off /= 2.0
+    total_score -= PrintListDifference(self, expected_tests, tests)
 
-            default_points = max(0, score_per_test - points_off)
+    return total_score
 
-            this_grade = self.ui.promptInt("Test %d did not match. How much credit should they get? (default = %spts) " % (tests_done, str(default_points)), default=default_points)
-            total_score += this_grade
+
+def GradeProcessSimulatorProjectOutput(self):
+    '''
+    Wraps the implementation of grading the output so we can choose to mark
+    a submission as not automatically gradeable.
+    '''
+
+    total_score = GradeMultiTestOutput(self)
+    if total_score != self.possible_points['output']:
+        if self.ui.promptBool("Scored a %d. Mark this submission as ungradeable? " % total_score, default=False):
+            self.grades['manualgradingneeded'] = 'X'
         else:
-            #all good!
-            total_score += score_per_test
-        tests_done += 1
-             
-    self.grades['output'] = total_score
-    self.ui.promptContinue("Output graded. Total score(%d possible): %d" % (self.possible_points['output'], total_score))
+            self.grades['output'] = total_score
+
+    else:
+        self.grades['output'] = total_score
+        self.ui.promptContinue("Output graded. Total score(%d possible): %d" % (self.possible_points['output'], total_score))
 
 
 def FilesystemProjectMassageOutput(fname):
@@ -252,10 +216,10 @@ def FilesystemProjectMassageOutput(fname):
     Lower-case everything, remove commas, etc.
     '''
     massaged_lines = []
-        
+
     with open(fname) as f:
         file_lines = f.readlines()
-        
+
         # trim leading newlines
         while file_lines[0] == '\n':
             file_lines = file_lines[1:]
@@ -265,7 +229,7 @@ def FilesystemProjectMassageOutput(fname):
             # skip newlines
             if line == '\n':
                 continue
-            
+
             else:
                 # so many binary characters, here we strip non-printable ones with a recipe taken from
                 # http://stackoverflow.com/questions/92438/stripping-non-printable-characters-from-a-string-in-python
@@ -290,17 +254,17 @@ def FilesystemProjectMassageOutput(fname):
 
             # some people do 'index = 1'
             line = line.replace(' = ', '=')
-            
+
             # some people do 'bytes read:10'
             line = line.replace(': ', ':')
-            
+
             # typo...
             line = line.replace('intialized', 'initialized')
-            
+
             # someone said this...
             line = line.replace('disk initiated', 'disk initialized')
             line = line.replace('deleted', 'destroyed')
-            
+
             massaged_lines.append(line)
 
     return massaged_lines
@@ -317,7 +281,7 @@ def GradeFilesystemProjectOutput(self):
 
     #configure score for each line to be equal
     score_per_test = self.possible_points['output']/float(len(expected_tests))
-    
+
     points_off = score_per_test * PrintListDifference(self, expected_tests, tests)
     default_points = self.possible_points['output'] - points_off
 
@@ -327,7 +291,7 @@ def GradeFilesystemProjectOutput(self):
         total_score = self.ui.promptInt("Outputs did not match. How much credit should they get? (default = %spts, %spts/line) " % (str(default_points), str(score_per_test)), default=default_points)
     else:
         total_score = default_points
-             
+
     self.grades['output'] = total_score
 
     #prompt only if not done already
