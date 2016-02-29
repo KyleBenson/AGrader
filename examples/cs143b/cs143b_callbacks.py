@@ -127,10 +127,11 @@ def ParseOutput(fname):
 
     return file_lines
 
-def PrintListDifference(self, expected, actual, max_len=20):
+def PrintListDifference(self, expected, actual, count_chars=True, max_len=20):
     '''
     Prints the difference between two lists of strings.  max_len argument (default = 20) determines space between first and second lists.
-    Returns a number representing how different they are (currently the # chars that differ).
+    Returns a number representing how different they are.  If count_chars is True, this is the # chars that differ.
+    Else, it's the number of lines that differ.
     !!max_len currently unimplemented!!
     '''
     self.ui.notify("Expected vv but got vv")
@@ -142,31 +143,39 @@ def PrintListDifference(self, expected, actual, max_len=20):
     # (the chars in that line missed will be accounted for later)
     lines_missing = len(expected) - len(actual)
     if lines_missing > 0:
-        total_wrong += len(''.join(expected[len(actual):]))
+        if count_chars:
+            total_wrong += len(''.join(expected[len(actual):]))
+        else:
+            total_wrong += lines_missing
         self.ui.notify("Last %d lines missing, lost %d points" % (lines_missing, total_wrong))
 
     for exp, act in zip(expected, actual):
-        # check if they didn't finish a test case
-        if len(act) < len(exp):
+        # check if they didn't finish a test case when counting chars
+        if count_chars and len(act) < len(exp):
             this_wrong = len(exp) - len(act)
             total_wrong += this_wrong
             self.grades['comments'] += "test %d missed last %d outputs; " % (total_checked, this_wrong)
 
         line_wrong = False
 
-        # actually check each character
-        for expChar, actChar in zip(exp, act):
-            if expChar != actChar:
-                if expChar == '1':
-                    expChar = 'init'
-                if expChar == '~':
-                    expChar = 'error'
-                if actChar == '1':
-                    actChar = 'init'
-                if actChar == '~':
-                    actChar = 'error'
+        # actually check each character when we're doing that
+        if count_chars:
+            for expChar, actChar in zip(exp, act):
+                if expChar != actChar:
+                    if expChar == '1':
+                        expChar = 'init'
+                    if expChar == '~':
+                        expChar = 'error'
+                    if actChar == '1':
+                        actChar = 'init'
+                    if actChar == '~':
+                        actChar = 'error'
+                    total_wrong += 1
+                    line_wrong = True
+        else:
+            line_wrong = not (exp == act)
+            if line_wrong:
                 total_wrong += 1
-                line_wrong = True
 
         if line_wrong:
             self.grades['comments'] += "test %d exp %s, got %s; " % (total_checked, exp, act)
@@ -280,15 +289,20 @@ def GradeFilesystemProjectOutput(self):
     expected_tests = FilesystemProjectMassageOutput(self.expected_output_filename)
 
     #configure score for each line to be equal
-    score_per_test = self.possible_points['output']/float(len(expected_tests))
+    score_per_test = 1 # we just output points and calculate percentage later: self.possible_points['output']/float(len(expected_tests))
 
-    points_off = score_per_test * PrintListDifference(self, expected_tests, tests)
+    points_off = score_per_test * PrintListDifference(self, expected_tests, tests, count_chars=False)
+    print "got points off", points_off
     default_points = self.possible_points['output'] - points_off
 
     # prompt for possible corrections if they didn't get 100
     do_prompt = default_points != self.possible_points['output']
     if do_prompt:
-        total_score = self.ui.promptInt("Outputs did not match. How much credit should they get? (default = %spts, %spts/line) " % (str(default_points), str(score_per_test)), default=default_points)
+        if self.ui.promptBool("Scored a %d. Mark this submission as ungradeable? " % default_points, default=False):
+            self.grades['manualgradingneeded'] = 'X'
+            total_score = default_points
+        else:
+            total_score = self.ui.promptInt("Outputs did not match. How much credit should they get? (default = %spts, %spts/line) " % (str(default_points), str(score_per_test)), default=default_points)
     else:
         total_score = default_points
 

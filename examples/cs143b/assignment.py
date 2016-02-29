@@ -49,12 +49,12 @@ class MyAssignment(Assignment):
         else:
             self.grades = {}
         # need to make this an empty string so we can append to it
-        if self.grades['comments'] is None:
+        if self.grades.get('comments', None) is None:
             self.grades['comments'] = ''
         # need to make these empty strings so a "None" doesn't appear
-        if self.grades['manualgradingneeded'] is None:
+        if self.grades.get('manualgradingneeded', None) is None:
             self.grades['manualgradingneeded'] = ''
-        if self.grades['latepenalty'] is None:
+        if self.grades.get('latepenalty', None) is None:
             self.grades['latepenalty'] = ''
 
         # if returned grades are None, this submission isn't present in the roster
@@ -66,7 +66,8 @@ class MyAssignment(Assignment):
         self.possible_points = {}
 
         #source code info
-        self.possible_points['output'] = 231
+        #self.possible_points['output'] = 231 # project 1
+        self.possible_points['output'] = 107 # project 2
         #self.source_dir = os.path.join(args.assignment_dir, 'sources', username)
 
         # need to import callbacks from this directory
@@ -74,8 +75,8 @@ class MyAssignment(Assignment):
         from AGrader.examples.cs143b.cs143b_callbacks import *
 
         self.addCallback('setup', SubmissionSetup)
-        self.addCallback('grade', GradeProcessSimulatorProjectOutput) #process simulator project
-        #self.addCallback('grade', cs143b_callbacks.GradeFilesystemProjectOutput)
+        #self.addCallback('grade', GradeProcessSimulatorProjectOutput) #process simulator project
+        self.addCallback('grade', GradeFilesystemProjectOutput)
         #self.addCallback('grade', cs143b_callbacks.ViewSource)
         self.addCallback('cleanup', SubmissionCleanup)
 
